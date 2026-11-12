@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<title>Mittelsenkrechte und Winkelhalbierende</title>
+<style>
+:root{--bg:#fbfaf6;--fg:#161a22;--mut:#9aa0ad;--line:#d9d7cf;--c1:#2563eb;--c2:#f08a00;--c3:#12a150;--btn:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#f0f2f6;--mut:#7d8596;--line:#343b48;--c1:#5b9bff;--c2:#ffad33;--c3:#3ddc84;--btn:#1f242d}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;height:100dvh;padding:12px 16px calc(12px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none}
+h1{margin:0;font-size:clamp(26px,4.2vw,52px);line-height:1.15;min-height:1.2em}
+#fig{flex:1;min-height:0;width:100%;touch-action:none}
+#txt{font-size:clamp(18px,2.6vw,32px);min-height:1.4em;text-align:center}
+#eq{font-size:clamp(22px,3.6vw,44px);font-weight:700;min-height:1.4em;text-align:center;font-variant-numeric:tabular-nums;line-height:1.35}
+#eq .dim{opacity:.4;font-size:.8em}
+footer{display:flex;gap:10px;align-items:center;margin-top:10px}
+#extras{display:flex;gap:10px;margin:0 auto}
+button{font:inherit;font-size:clamp(16px,2vw,24px);color:inherit;background:var(--btn);border:1px solid var(--line);border-radius:12px;padding:12px 18px;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.3}
+#cnt{color:var(--mut);font-size:clamp(14px,1.6vw,20px);min-width:3.5em;text-align:center}
+#next{background:var(--c1);border-color:var(--c1);color:#fff;font-weight:700}
+svg .ln{stroke:var(--fg);stroke-width:5;stroke-linecap:round;fill:none}
+svg .thin{stroke:var(--fg);stroke-width:3;stroke-linecap:round;fill:none}
+svg .da{stroke:var(--mut);stroke-width:3;stroke-dasharray:12 9;fill:none}
+svg .hi{stroke:var(--c3);stroke-width:5;stroke-linecap:round;fill:none}
+svg .zk{stroke:var(--c2);stroke-width:3;stroke-dasharray:10 8;fill:none}
+svg .wd{stroke:none}
+svg .n{fill:var(--mut);opacity:.3}
+svg .c1{fill:var(--c1);opacity:.62}
+svg .c2{fill:var(--c2);opacity:.62}
+svg .c3{fill:var(--c3);opacity:.62}
+svg .cr{fill:#d81e1e;opacity:.62}
+svg .tx{fill:var(--fg);font:700 30px system-ui,sans-serif}
+svg .ts{fill:var(--mut);font:600 24px system-ui,sans-serif}
+svg .tr{fill:#d81e1e}
+svg .tc1{fill:var(--c1)}
+svg .tc3{fill:var(--c3)}
+svg .pt{fill:var(--fg)}
+svg .mk{fill:var(--c3)}
+svg .hd{fill:var(--c1);opacity:.28}
+svg .ip{fill:var(--c2)}
+svg .road{fill:#5d626b}
+svg .rdl{stroke:#fff;stroke-width:4;stroke-dasharray:26 18}
+svg .hs{fill:var(--mut);opacity:.55}
+svg .fence{stroke:#8a5a2b;stroke-width:9;stroke-linecap:round}
+svg .grass{fill:var(--c3);opacity:.1}
+svg .stop{fill:#f5c400;stroke:#20140a;stroke-width:2}
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<svg id="fig" viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg"></svg>
+<div id="txt"></div>
+<div id="eq"></div>
+<footer>
+  <button id="prev">‹ Zurück</button><span id="cnt"></span>
+  <div id="extras"></div>
+  <button id="next">Weiter ›</button>
+</footer>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+const P = (x, y) => ({ x, y });
+const M = P(400, 260);
+// Winkel mathematisch: gegen den Uhrzeigersinn, 0° zeigt nach rechts.
+const pol = (r, w, c = M) => P(c.x + r * Math.cos(rad(w)), c.y - r * Math.sin(rad(w)));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const dirOf = (c, p) => (deg(Math.atan2(-(p.y - c.y), p.x - c.x)) + 360) % 360;
+const f = n => n.toFixed(1);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[rnd(0, a.length - 1)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const lines = (arr, n = arr.length) => arr.slice(0, n).map((l, i) => `<div class="${i < n - 1 ? 'dim' : ''}">${l}</div>`).join('');
+const text = (p, s, c = 'tx') => `<text class="${c}" x="${f(p.x)}" y="${f(p.y)}" text-anchor="middle" dominant-baseline="central">${s}</text>`;
+const seg = (p, q, c = 'ln') => `<line class="${c}" x1="${f(p.x)}" y1="${f(p.y)}" x2="${f(q.x)}" y2="${f(q.y)}"/>`;
+const dot = (p, r = 8, c = 'pt') => `<circle class="${c}" cx="${f(p.x)}" cy="${f(p.y)}" r="${r}"/>`;
+const circ = (m, r, c = 'thin') => `<circle class="${c}" cx="${f(m.x)}" cy="${f(m.y)}" r="${f(r)}"/>`;
+const handle = p => `<circle class="hd" cx="${f(p.x)}" cy="${f(p.y)}" r="22"/>` + dot(p, 8);
+const poly = (ps, c = 'ln') => `<polygon class="${c}" points="${ps.map(p => f(p.x) + ',' + f(p.y)).join(' ')}"/>`;
+// Gerade durch p mit Richtung w, über das Bild hinaus verlängert.
+const xline = (p, w, c = 'ln') => seg(pol(900, w, p), pol(900, w + 180, p), c);
+// Winkelfläche gegen den Uhrzeigersinn von a1 nach a2, Beschriftung außerhalb des Bogens.
+function wedge(c, a1, a2, r, cls, label, tcls = 'tx', cap = 250) {
+  let d = ((a2 - a1) % 360 + 360) % 360; if (d === 0 && a2 !== a1) d = 360; if (d <= 0) return '';
+  const p1 = pol(r, a1, c), p2 = pol(r, a1 + d, c);
+  let s = d >= 360 ? `<circle class="wd ${cls}" cx="${f(c.x)}" cy="${f(c.y)}" r="${r}"/>`
+    : `<path class="wd ${cls}" d="M${f(c.x)} ${f(c.y)}L${f(p1.x)} ${f(p1.y)}A${r} ${r} 0 ${d > 180 ? 1 : 0} 0 ${f(p2.x)} ${f(p2.y)}Z"/>`;
+  if (label) {
+    const half = String(label).length * 8.5 + 8;
+    const lr = Math.min(cap, Math.max(r + 40, half / Math.tan(rad(Math.min(d, 178) / 2))));
+    s += text(pol(lr, a1 + d / 2, c), label, tcls);
+  }
+  return s;
+}
+// Innenwinkel an Ecke v zwischen den Strahlen zu p und q (kleinerer Winkel).
+function inner(v, p, q, r, cls, label, tcls, cap) {
+  let a1 = dirOf(v, p), a2 = dirOf(v, q);
+  if (((a2 - a1) % 360 + 360) % 360 > 180) [a1, a2] = [a2, a1];
+  return wedge(v, a1, a2, r, cls, label, tcls, cap);
+}
+const angleAt = (v, p, q) => { const d = Math.abs(dirOf(v, p) - dirOf(v, q)); return d > 180 ? 360 - d : d; };
+const cm = px => (Math.round(px / 5) / 10).toFixed(1).replace('.', ',');
+
+const rows = arr => arr.map(l => `<div>${l}</div>`).join('');
+const km = px => (Math.round(px / 10) / 10).toFixed(1).replace('.', ',');
+const house = (p, l) => `<rect class="hs" x="${p.x - 22}" y="${p.y - 14}" width="44" height="34"/>` + poly([P(p.x - 28, p.y - 14), P(p.x + 28, p.y - 14), P(p.x, p.y - 40)], 'hs') + text(P(p.x, p.y - 64), l);
+const foot = (p, a, w) => { const ux = Math.cos(rad(w)), uy = -Math.sin(rad(w)), t = (p.x - a.x) * ux + (p.y - a.y) * uy; return P(a.x + t * ux, a.y + t * uy); };
+const rightMark = (c, w, s = 18) => { const p1 = pol(s, w, c), p2 = pol(s * Math.SQRT2, w + 45, c), p3 = pol(s, w + 90, c); return `<polyline class="thin" points="${f(p1.x)},${f(p1.y)} ${f(p2.x)},${f(p2.y)} ${f(p3.x)},${f(p3.y)}"/>`; };
+
+// ---------- Bushaltestelle ----------
+const VA = P(170, 130), VB = P(560, 260), RY = 440;
+let H = P(640, RY);
+const HX = ((VB.x ** 2 - VA.x ** 2) + (RY - VB.y) ** 2 - (RY - VA.y) ** 2) / (2 * (VB.x - VA.x));
+const VM = P((VA.x + VB.x) / 2, (VA.y + VB.y) / 2), VW = dirOf(VA, VB) + 90;
+function busFig(sol) {
+  const h = sol ? P(HX, RY) : H;
+  let s = `<rect class="road" x="0" y="${RY - 26}" width="800" height="52"/>` + seg(P(0, RY), P(800, RY), 'rdl');
+  if (sol) s += xline(VM, VW, 'hi');
+  s += seg(h, VA, 'da') + seg(h, VB, 'da') + house(VA, 'A') + house(VB, 'B');
+  return s + `<rect class="stop" x="${f(h.x - 13)}" y="${RY - 13}" width="26" height="26" rx="5"/>` + text(P(h.x, RY + 50), 'H');
+}
+const busEq = sol => { const h = sol ? P(HX, RY) : H; return `A: ${km(dist(h, VA))} km &nbsp;&nbsp; B: ${km(dist(h, VB))} km`; };
+
+// ---------- Punkte gleich weit von A und B ----------
+const A = P(240, 300), B = P(560, 300), MX = 400;
+let Pp = P(260, 120), marks = [];
+function msFig(o = {}) {
+  let s = '';
+  if (o.line) s += seg(P(MX, -10), P(MX, 530), 'hi') + rightMark(P(MX, A.y), 0);
+  if (o.pt !== false) s += seg(Pp, A, 'da') + seg(Pp, B, 'da');
+  s += seg(A, B) + dot(A) + dot(B) + text(P(A.x - 26, A.y + 6), 'A') + text(P(B.x + 26, B.y + 6), 'B');
+  if (o.mid) s += dot(P(MX, A.y)) + text(P(MX + 26, A.y + 26), 'M');
+  marks.forEach(m => { s += dot(m, 10, 'mk'); });
+  if (o.pt !== false) s += dot(Pp, 10) + text(P(Pp.x + 26, Pp.y - 22), 'P');
+  return s;
+}
+function msDrag(w, p) { Pp = P(Math.abs(p.x - MX) < 10 ? MX : clamp(p.x, 20, 780), clamp(p.y, 20, 500)); }
+function msUp() { if (Pp.x === MX && Math.abs(Pp.y - A.y) > 20 && !marks.some(m => dist(m, Pp) < 45)) marks.push(P(Pp.x, Pp.y)); }
+
+// ---------- Konstruktion Mittelsenkrechte ----------
+const CA = P(250, 300), CB = P(550, 300), CR = 190, CH = Math.sqrt(CR * CR - 150 * 150);
+const MSL = ['1. Zirkel in A, Radius mehr als die halbe Strecke, Kreis zeichnen', '2. Zirkel in B, gleicher Radius, Kreis zeichnen', '3. Gerade durch die beiden Schnittpunkte'];
+function msCon(k) {
+  let s = '';
+  if (k >= 1) s += circ(CA, CR, 'zk');
+  if (k >= 2) s += circ(CB, CR, 'zk') + dot(P(400, 300 - CH), 8, 'ip') + dot(P(400, 300 + CH), 8, 'ip');
+  if (k >= 3) s += seg(P(400, -10), P(400, 530), 'hi');
+  return s + seg(CA, CB) + dot(CA) + dot(CB) + text(P(CA.x - 26, CA.y + 6), 'A') + text(P(CB.x + 26, CB.y + 6), 'B');
+}
+const msStep = k => ({ t: 'Mittelsenkrechte mit dem Zirkel', fig: () => msCon(k), eq: () => lines(MSL, k) });
+
+// ---------- Gartenecke ----------
+const S = P(120, 440), W = 70, EW = P(Math.cos(rad(W)), -Math.sin(rad(W))), BW = W / 2;
+let Q = P(560, 330), qmarks = [];
+const d1 = p => S.y - p.y, d2 = p => Math.abs((p.x - S.x) * EW.y - (p.y - S.y) * EW.x);
+const along = p => (p.x - S.x) * Math.cos(rad(BW)) - (p.y - S.y) * Math.sin(rad(BW));
+function whFig(o = {}) {
+  let s = wedge(S, 0, W, 560, 'grass');
+  if (o.line) s += seg(S, pol(700, BW, S), 'hi') + wedge(S, 0, BW, 90, 'c1', BW + '°') + wedge(S, BW, W, 90, 'c3', BW + '°');
+  s += seg(S, pol(640, 0, S), 'fence') + seg(S, pol(460, W, S), 'fence');
+  if (!o.line) s += wedge(S, 0, W, 60, 'n', W + '°');
+  if (o.pt !== false) s += seg(Q, P(Q.x, S.y), 'da') + seg(Q, foot(Q, S, W), 'da');
+  qmarks.forEach(m => { s += dot(m, 10, 'mk'); });
+  if (o.pt !== false) s += dot(Q, 10) + text(P(Q.x + 26, Q.y - 22), 'P');
+  return s;
+}
+function whDrag(w, p) {
+  p = P(clamp(p.x, 20, 780), clamp(p.y, 20, S.y - 6));
+  const a = along(p), perp = (p.x - S.x) * Math.sin(rad(BW)) + (p.y - S.y) * Math.cos(rad(BW));
+  Q = Math.abs(perp) < 10 && a > 40 ? pol(a, BW, S) : p;
+}
+function whUp() { if (Math.abs(d1(Q) - d2(Q)) < 0.5 && along(Q) > 60 && !qmarks.some(m => dist(m, Q) < 45)) qmarks.push(P(Q.x, Q.y)); }
+
+// ---------- Konstruktion Winkelhalbierende ----------
+const KS = P(150, 430), KR = 180, KX1 = pol(KR, 0, KS), KX2 = pol(KR, W, KS), KZ = P(KX1.x + KX2.x - KS.x, KX1.y + KX2.y - KS.y);
+const WHL = ['1. Kreis um S, er schneidet beide Schenkel', '2. Um beide Schnittpunkte je ein Kreis mit gleichem Radius', '3. Gerade von S durch den neuen Schnittpunkt'];
+function whCon(k) {
+  let s = '';
+  if (k >= 1) s += circ(KS, KR, 'zk') + dot(KX1, 8, 'ip') + dot(KX2, 8, 'ip');
+  if (k >= 2) s += circ(KX1, KR, 'zk') + circ(KX2, KR, 'zk') + dot(KZ, 8, 'ip');
+  if (k >= 3) s += seg(KS, pol(700, BW, KS), 'hi');
+  return s + seg(KS, pol(640, 0, KS)) + seg(KS, pol(470, W, KS)) + dot(KS) + text(P(KS.x - 26, KS.y + 8), 'S');
+}
+const whStep = k => ({ t: 'Winkelhalbierende mit dem Zirkel', fig: () => whCon(k), eq: () => lines(WHL, k) });
+
+// ---------- Geodreieck ----------
+const geoMs = () => seg(CA, CB) + dot(CA) + dot(CB) + text(P(CA.x - 26, CA.y + 6), 'A') + text(P(CB.x + 26, CB.y + 6), 'B') + dot(P(400, 300)) + text(P(426, 326), 'M') + seg(P(400, 40), P(400, 500), 'hi') + rightMark(P(400, 300), 0);
+const geoWh = () => seg(KS, pol(640, 0, KS)) + seg(KS, pol(470, W, KS)) + dot(KS) + text(P(KS.x - 26, KS.y + 8), 'S') + seg(KS, pol(700, BW, KS), 'hi') + wedge(KS, 0, BW, 110, 'c1', BW + '°') + wedge(KS, BW, W, 110, 'c3', BW + '°');
+
+// ---------- Aufgabe ----------
+let tk = null;
+function newTk() {
+  const old = tk; let k;
+  do k = pick(['pb', 'am', 'teil', 'ganz']); while (old && old.k === k);
+  tk = { k, show: false, n: k === 'pb' ? rnd(3, 9) : k === 'am' ? rnd(3, 7) * 2 : k === 'teil' ? rnd(4, 14) * 10 : rnd(10, 40) };
+}
+function tkFig() {
+  const t = tk;
+  if (t.k === 'pb' || t.k === 'am') {
+    const Pq = P(400, 110); let s = seg(P(400, 40), P(400, 500), 'hi') + rightMark(P(400, 300), 0) + seg(CA, CB) + dot(CA) + dot(CB) + text(P(CA.x - 26, CA.y + 6), 'A') + text(P(CB.x + 26, CB.y + 6), 'B') + dot(P(400, 300)) + text(P(426, 326), 'M');
+    if (t.k === 'pb') return s + seg(Pq, CA, 'da') + seg(Pq, CB, 'da') + dot(Pq) + text(P(426, 92), 'P') + text(P(290, 190), t.n + ' cm') + text(P(510, 190), t.show ? t.n + ' cm' : '?');
+    return s + text(P(400, 380), `AB = ${t.n} cm`) + text(P(325, 270), t.show ? (t.n / 2) + ' cm' : '?');
+  }
+  const whole = t.k === 'teil' ? t.n : 2 * t.n, half = whole / 2, sh = t.show;
+  return seg(KS, pol(640, 0, KS)) + seg(KS, pol(470, whole, KS)) + seg(KS, pol(600, half, KS), 'hi') + dot(KS)
+    + wedge(KS, 0, half, 120, 'c1', t.k === 'teil' && !sh ? '?' : half + '°') + wedge(KS, half, whole, 120, 'c3')
+    + wedge(KS, 0, whole, 250, 'n') + text(pol(290, whole + 12, KS), t.k === 'ganz' && !sh ? '?' : whole + '°');
+}
+const TKQ = { pb: 'P liegt auf der Mittelsenkrechten von AB. Wie lang ist PB?', am: 'Die Mittelsenkrechte trifft AB in M. Wie lang ist AM?', teil: 'Die Winkelhalbierende teilt den Winkel. Wie groß ist ein Teil?', ganz: 'Ein Teil ist so groß. Wie groß ist der ganze Winkel?' };
+const tkEq = () => { const t = tk; if (!t.show) return ''; return { pb: `PB = PA = ${t.n} cm`, am: `AM = ${t.n} cm : 2 = ${t.n / 2} cm`, teil: `${t.n}° : 2 = ${t.n / 2}°`, ganz: `2 · ${t.n}° = ${2 * t.n}°` }[t.k]; };
+
+const STEPS = [
+  // Die Frage
+  { t: 'Eine Bushaltestelle für zwei Dörfer', enter: () => { H = P(640, RY); }, drag: (w, p) => { H = P(clamp(p.x, 20, 780), RY); },
+    fig: () => busFig(false), txt: 'Die Haltestelle H soll von A und von B gleich weit weg sein. Wo muss sie hin?', eq: () => busEq(false) },
+  // Mittelsenkrechte
+  { t: 'Wo ist es von A und B gleich weit?', rv: 1, enter: () => { Pp = P(260, 120); marks = []; }, drag: msDrag, up: msUp,
+    fig: () => msFig({ line: shown }),
+    txt: () => shown ? 'Alle diese Punkte liegen auf einer Geraden. Sie heißt Mittelsenkrechte.' : 'Zieh P an Stellen, die von A und B gleich weit weg sind.',
+    eq: () => `PA = ${cm(dist(Pp, A))} cm &nbsp;&nbsp; PB = ${cm(dist(Pp, B))} cm` },
+  { t: 'Die Mittelsenkrechte', fig: () => msFig({ line: 1, mid: 1, pt: false }),
+    txt: 'Sie geht durch die Mitte M von AB und steht senkrecht auf AB.', eq: () => `AM = MB = ${cm(MX - A.x)} cm` },
+  msStep(1), msStep(2), msStep(3),
+  { t: 'Mittelsenkrechte mit dem Geodreieck', fig: geoMs, eq: () => rows(['AB messen: 6 cm', 'Mitte markieren: 6 cm : 2 = 3 cm', 'Senkrechte durch M zeichnen']) },
+  // Die Antwort
+  { t: 'Zurück zur Bushaltestelle', rv: 1, fig: () => busFig(shown),
+    txt: () => shown ? 'Wo die Mittelsenkrechte die Straße schneidet, ist es von beiden Dörfern gleich weit.' : 'Welche Linie hilft uns?',
+    eq: () => shown ? busEq(true) : '' },
+  // Winkelhalbierende
+  { t: 'Ein Rasensprenger in der Gartenecke', rv: 1, enter: () => { Q = P(560, 330); qmarks = []; }, drag: whDrag, up: whUp,
+    fig: () => whFig({ line: shown }),
+    txt: () => shown ? 'Alle diese Punkte liegen auf der Winkelhalbierenden. Sie teilt den Winkel in zwei gleich große Teile.' : 'Er soll von beiden Zäunen gleich weit weg stehen. Wo geht das?',
+    eq: () => shown ? `${W}° : 2 = ${BW}°` : `Abstand unten: ${cm(d1(Q))} cm &nbsp;&nbsp; oben: ${cm(d2(Q))} cm` },
+  whStep(1), whStep(2), whStep(3),
+  { t: 'Winkelhalbierende mit dem Geodreieck', fig: geoWh, eq: () => rows([`Winkel messen: ${W}°`, `Halbieren: ${W}° : 2 = ${BW}°`, `${BW}° antragen und Linie zeichnen`]) },
+  // Aufgabe
+  { t: 'Aufgabe', enter: newTk, fig: tkFig, txt: () => TKQ[tk.k],
+    btns: [{ l: 'Auflösen', f: () => { tk.show = !tk.show; } }, { l: 'Neue Aufgabe', f: newTk }], eq: tkEq }
+];
+
+// ---------- Ablauf ----------
+let step = 0, pair = 0, shown = false, shownStep = -1;
+function render() {
+  const st = STEPS[step];
+  $('title').textContent = typeof st.t === 'function' ? st.t() : st.t;
+  $('fig').innerHTML = st.fig();
+  $('txt').textContent = typeof st.txt === 'function' ? st.txt() : st.txt || '';
+  $('eq').innerHTML = st.eq ? st.eq() : '';
+  if (shownStep !== step) {
+    shownStep = step;
+    $('extras').innerHTML = (st.btns || []).map((b, i) => `<button data-b="${i}">${b.l}</button>`).join('');
+    $('cnt').textContent = `${step + 1} / ${STEPS.length}`;
+    $('prev').disabled = step === 0;
+  }
+  $('next').disabled = step === STEPS.length - 1 && !(st.rv && !shown);
+  const bs = $('extras').children || [];
+  for (let i = 0; i < bs.length; i++) bs[i].disabled = !!(st.btns[i].dis && st.btns[i].dis());
+}
+function go(d) {
+  const n = step + d; if (n < 0 || n >= STEPS.length) return;
+  step = n; pair = 0; shown = false;
+  if (typeof onGo === 'function') onGo();
+  if (STEPS[step].enter) STEPS[step].enter();
+  render();
+}
+$('prev').addEventListener('click', () => go(-1));
+// Bei Folien mit verdecktem Ergebnis deckt der erste Druck auf, der zweite geht weiter.
+const fwd = () => { const st = STEPS[step]; if (st.rv && !shown) { shown = true; render(); } else go(1); };
+$('next').addEventListener('click', fwd);
+$('extras').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  STEPS[step].btns[+b.dataset.b].f(); render();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); fwd(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+});
+
+const fig = $('fig'); let down = false;
+// Zeigerposition in Bildkoordinaten, auch wenn das Bild mit Rand eingepasst ist.
+function svgPt(e) {
+  const r = fig.getBoundingClientRect(), sc = Math.min(r.width / 800, r.height / 520);
+  return P((e.clientX - r.left - (r.width - 800 * sc) / 2) / sc, (e.clientY - r.top - (r.height - 520 * sc) / 2) / sc);
+}
+const ctr = st => typeof st.c === 'function' ? st.c() : st.c || M;
+fig.addEventListener('pointerdown', e => {
+  const st = STEPS[step], p = svgPt(e), w = dirOf(ctr(st), p);
+  if (st.tap) { st.tap(w, p); return render(); }
+  if (!st.drag) return;
+  if (st.down && st.down(p) === false) return;
+  down = true; try { fig.setPointerCapture(e.pointerId); } catch (x) {}
+  st.drag(w, p); render(); e.preventDefault();
+});
+fig.addEventListener('pointermove', e => { const st = STEPS[step]; if (down && st.drag) { const p = svgPt(e); st.drag(dirOf(ctr(st), p), p); render(); } });
+const up = () => { if (down) { down = false; const st = STEPS[step]; if (st.up) { st.up(); render(); } } };
+fig.addEventListener('pointerup', up); fig.addEventListener('pointercancel', up);
+if (typeof onGo === 'function') onGo();
+if (STEPS[0].enter) STEPS[0].enter();
+render();
+</script>
+</body>
+</html>
