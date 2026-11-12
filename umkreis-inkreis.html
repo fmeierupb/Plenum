@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<title>Umkreis und Inkreis</title>
+<style>
+:root{--bg:#fbfaf6;--fg:#161a22;--mut:#9aa0ad;--line:#d9d7cf;--c1:#2563eb;--c2:#f08a00;--c3:#12a150;--btn:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#f0f2f6;--mut:#7d8596;--line:#343b48;--c1:#5b9bff;--c2:#ffad33;--c3:#3ddc84;--btn:#1f242d}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;height:100dvh;padding:12px 16px calc(12px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none}
+h1{margin:0;font-size:clamp(26px,4.2vw,52px);line-height:1.15;min-height:1.2em}
+#fig{flex:1;min-height:0;width:100%;touch-action:none}
+#txt{font-size:clamp(18px,2.6vw,32px);min-height:1.4em;text-align:center}
+#eq{font-size:clamp(22px,3.6vw,44px);font-weight:700;min-height:1.4em;text-align:center;font-variant-numeric:tabular-nums;line-height:1.35}
+#eq .dim{opacity:.4;font-size:.8em}
+footer{display:flex;gap:10px;align-items:center;margin-top:10px}
+#extras{display:flex;gap:10px;margin:0 auto}
+button{font:inherit;font-size:clamp(16px,2vw,24px);color:inherit;background:var(--btn);border:1px solid var(--line);border-radius:12px;padding:12px 18px;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.3}
+#cnt{color:var(--mut);font-size:clamp(14px,1.6vw,20px);min-width:3.5em;text-align:center}
+#next{background:var(--c1);border-color:var(--c1);color:#fff;font-weight:700}
+svg .ln{stroke:var(--fg);stroke-width:5;stroke-linecap:round;fill:none}
+svg .thin{stroke:var(--fg);stroke-width:3;stroke-linecap:round;fill:none}
+svg .da{stroke:var(--mut);stroke-width:3;stroke-dasharray:12 9;fill:none}
+svg .hi{stroke:var(--c3);stroke-width:5;stroke-linecap:round;fill:none}
+svg .zk{stroke:var(--c2);stroke-width:3;stroke-dasharray:10 8;fill:none}
+svg .wd{stroke:none}
+svg .n{fill:var(--mut);opacity:.3}
+svg .c1{fill:var(--c1);opacity:.62}
+svg .c2{fill:var(--c2);opacity:.62}
+svg .c3{fill:var(--c3);opacity:.62}
+svg .cr{fill:#d81e1e;opacity:.62}
+svg .tx{fill:var(--fg);font:700 30px system-ui,sans-serif}
+svg .ts{fill:var(--mut);font:600 24px system-ui,sans-serif}
+svg .tr{fill:#d81e1e}
+svg .tc1{fill:var(--c1)}
+svg .tc3{fill:var(--c3)}
+svg .pt{fill:var(--fg)}
+svg .mk{fill:var(--c3)}
+svg .hd{fill:var(--c1);opacity:.28}
+svg .ip{fill:var(--c2)}
+svg .hs{fill:var(--mut);opacity:.55}
+svg .pool{fill:var(--c1);opacity:.25;stroke:var(--c1);stroke-width:3}
+svg .grass{fill:var(--c3);opacity:.12}
+svg .fence{stroke:#8a5a2b;stroke-width:7;stroke-linejoin:round;fill:none}
+svg .ms{stroke:var(--c3);stroke-width:4;fill:none}
+svg .ucirc{stroke:var(--c1);stroke-width:4;fill:none}
+svg .bad{stroke:#d81e1e;stroke-width:3;stroke-dasharray:10 8;fill:none}
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<svg id="fig" viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg"></svg>
+<div id="txt"></div>
+<div id="eq"></div>
+<footer>
+  <button id="prev">‹ Zurück</button><span id="cnt"></span>
+  <div id="extras"></div>
+  <button id="next">Weiter ›</button>
+</footer>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+const P = (x, y) => ({ x, y });
+const M = P(400, 260);
+// Winkel mathematisch: gegen den Uhrzeigersinn, 0° zeigt nach rechts.
+const pol = (r, w, c = M) => P(c.x + r * Math.cos(rad(w)), c.y - r * Math.sin(rad(w)));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const dirOf = (c, p) => (deg(Math.atan2(-(p.y - c.y), p.x - c.x)) + 360) % 360;
+const f = n => n.toFixed(1);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[rnd(0, a.length - 1)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const lines = (arr, n = arr.length) => arr.slice(0, n).map((l, i) => `<div class="${i < n - 1 ? 'dim' : ''}">${l}</div>`).join('');
+const text = (p, s, c = 'tx') => `<text class="${c}" x="${f(p.x)}" y="${f(p.y)}" text-anchor="middle" dominant-baseline="central">${s}</text>`;
+const seg = (p, q, c = 'ln') => `<line class="${c}" x1="${f(p.x)}" y1="${f(p.y)}" x2="${f(q.x)}" y2="${f(q.y)}"/>`;
+const dot = (p, r = 8, c = 'pt') => `<circle class="${c}" cx="${f(p.x)}" cy="${f(p.y)}" r="${r}"/>`;
+const circ = (m, r, c = 'thin') => `<circle class="${c}" cx="${f(m.x)}" cy="${f(m.y)}" r="${f(r)}"/>`;
+const handle = p => `<circle class="hd" cx="${f(p.x)}" cy="${f(p.y)}" r="22"/>` + dot(p, 8);
+const poly = (ps, c = 'ln') => `<polygon class="${c}" points="${ps.map(p => f(p.x) + ',' + f(p.y)).join(' ')}"/>`;
+// Gerade durch p mit Richtung w, über das Bild hinaus verlängert.
+const xline = (p, w, c = 'ln') => seg(pol(900, w, p), pol(900, w + 180, p), c);
+// Winkelfläche gegen den Uhrzeigersinn von a1 nach a2, Beschriftung außerhalb des Bogens.
+function wedge(c, a1, a2, r, cls, label, tcls = 'tx', cap = 250) {
+  let d = ((a2 - a1) % 360 + 360) % 360; if (d === 0 && a2 !== a1) d = 360; if (d <= 0) return '';
+  const p1 = pol(r, a1, c), p2 = pol(r, a1 + d, c);
+  let s = d >= 360 ? `<circle class="wd ${cls}" cx="${f(c.x)}" cy="${f(c.y)}" r="${r}"/>`
+    : `<path class="wd ${cls}" d="M${f(c.x)} ${f(c.y)}L${f(p1.x)} ${f(p1.y)}A${r} ${r} 0 ${d > 180 ? 1 : 0} 0 ${f(p2.x)} ${f(p2.y)}Z"/>`;
+  if (label) {
+    const half = String(label).length * 8.5 + 8;
+    const lr = Math.min(cap, Math.max(r + 40, half / Math.tan(rad(Math.min(d, 178) / 2))));
+    s += text(pol(lr, a1 + d / 2, c), label, tcls);
+  }
+  return s;
+}
+// Innenwinkel an Ecke v zwischen den Strahlen zu p und q (kleinerer Winkel).
+function inner(v, p, q, r, cls, label, tcls, cap) {
+  let a1 = dirOf(v, p), a2 = dirOf(v, q);
+  if (((a2 - a1) % 360 + 360) % 360 > 180) [a1, a2] = [a2, a1];
+  return wedge(v, a1, a2, r, cls, label, tcls, cap);
+}
+const angleAt = (v, p, q) => { const d = Math.abs(dirOf(v, p) - dirOf(v, q)); return d > 180 ? 360 - d : d; };
+const cm = px => (Math.round(px / 5) / 10).toFixed(1).replace('.', ',');
+
+const km = px => (Math.round(px / 10) / 10).toFixed(1).replace('.', ',');
+const house = (p, l, dy = -64) => `<rect class="hs" x="${p.x - 22}" y="${p.y - 14}" width="44" height="34"/>` + poly([P(p.x - 28, p.y - 14), P(p.x + 28, p.y - 14), P(p.x, p.y - 40)], 'hs') + text(P(p.x, p.y + dy), l);
+const mid = (p, q) => P((p.x + q.x) / 2, (p.y + q.y) / 2);
+const msLine = (p, q, c = 'ms') => xline(mid(p, q), dirOf(p, q) + 90, c);
+function ccenter(A, B, C) {
+  const d = 2 * (A.x * (B.y - C.y) + B.x * (C.y - A.y) + C.x * (A.y - B.y));
+  const a2 = A.x * A.x + A.y * A.y, b2 = B.x * B.x + B.y * B.y, c2 = C.x * C.x + C.y * C.y;
+  return P((a2 * (B.y - C.y) + b2 * (C.y - A.y) + c2 * (A.y - B.y)) / d, (a2 * (C.x - B.x) + b2 * (A.x - C.x) + c2 * (B.x - A.x)) / d);
+}
+function icenter(A, B, C) { const a = dist(B, C), b = dist(A, C), c = dist(A, B), s = a + b + c; return P((a * A.x + b * B.x + c * C.x) / s, (a * A.y + b * B.y + c * C.y) / s); }
+const dline = (p, a, b) => Math.abs((b.x - a.x) * (a.y - p.y) - (a.x - p.x) * (b.y - a.y)) / dist(a, b);
+function footOn(p, a, b) { const l = dist(a, b), ux = (b.x - a.x) / l, uy = (b.y - a.y) / l, t = (p.x - a.x) * ux + (p.y - a.y) * uy; return P(a.x + t * ux, a.y + t * uy); }
+const bisDir = (v, p, q) => { const u1 = pol(1, dirOf(v, p)), u2 = pol(1, dirOf(v, q)); return dirOf(P(0, 0), P(u1.x + u2.x - 2 * M.x, u1.y + u2.y - 2 * M.y)); };
+// Winkelhalbierende von der Ecke v bis zur gegenüberliegenden Seite pq.
+function bisLine(v, p, q) {
+  const d = bisDir(v, p, q), ux = Math.cos(rad(d)), uy = -Math.sin(rad(d)), ex = q.x - p.x, ey = q.y - p.y;
+  const det = ux * (-ey) - uy * (-ex), t = ((p.x - v.x) * (-ey) - (p.y - v.y) * (-ex)) / det;
+  return seg(v, P(v.x + t * ux, v.y + t * uy), 'ms');
+}
+const rightMark = (c, w, s = 18) => { const p1 = pol(s, w, c), p2 = pol(s * Math.SQRT2, w + 45, c), p3 = pol(s, w + 90, c); return `<polyline class="thin" points="${f(p1.x)},${f(p1.y)} ${f(p2.x)},${f(p2.y)} ${f(p3.x)},${f(p3.y)}"/>`; };
+const sideOf = (p, a, b) => Math.sign((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x));
+const inside = (p, T) => { const s0 = sideOf(T[2], T[0], T[1]); return sideOf(p, T[0], T[1]) === s0 && sideOf(p, T[1], T[2]) === sideOf(T[0], T[1], T[2]) && sideOf(p, T[2], T[0]) === sideOf(T[1], T[2], T[0]); };
+const minAng = T => Math.min(...T.map((v, i) => angleAt(v, T[(i + 1) % 3], T[(i + 2) % 3])));
+const labT = (T, names = 'ABC') => { const m = P((T[0].x + T[1].x + T[2].x) / 3, (T[0].y + T[1].y + T[2].y) / 3); return T.map((v, i) => { const l = dist(v, m); return text(P(v.x + (v.x - m.x) / l * 30, v.y + (v.y - m.y) / l * 30), names[i]); }).join(''); };
+
+// ---------- Funkmast ----------
+const V = [P(150, 420), P(640, 440), P(400, 120)];
+const VU = ccenter(...V);
+let Mm = P(560, 220);
+function mastFig(o = {}) {
+  const m = o.sol ? VU : Mm; let s = '';
+  if (o.ms >= 1) s += msLine(V[0], V[1]);
+  if (o.ms >= 2) s += msLine(V[1], V[2]);
+  if (o.ms >= 3) s += msLine(V[0], V[2], 'zk');
+  if (o.ms) s += seg(V[0], V[1], 'da') + seg(V[1], V[2], 'da') + (o.ms >= 3 ? seg(V[0], V[2], 'da') : '');
+  if (o.sol) s += circ(VU, dist(VU, V[0]), 'ucirc');
+  if (o.mast !== false) s += V.map(v => seg(m, v, 'da')).join('');
+  s += house(V[0], 'A', 34) + house(V[1], 'B', 34) + house(V[2], 'C');
+  if (o.ms >= 2 && !o.sol) s += dot(VU, 10) + text(P(VU.x + 28, VU.y - 18), 'U');
+  if (o.mast !== false) s += seg(P(m.x, m.y), P(m.x, m.y - 46), 'ln') + seg(P(m.x - 14, m.y), P(m.x, m.y - 46), 'thin') + seg(P(m.x + 14, m.y), P(m.x, m.y - 46), 'thin') + dot(P(m.x, m.y - 50), 7);
+  return s;
+}
+const mastEq = sol => { const m = sol ? VU : Mm; return ['A', 'B', 'C'].map((l, i) => `${l}: ${km(dist(m, V[i]))} km`).join(' &nbsp;&nbsp; '); };
+
+// ---------- Dreieck zum Ziehen ----------
+const T = [P(170, 430), P(630, 430), P(360, 110)];
+let tg = -1;
+function tDown(p) { tg = -1; let best = 90; T.forEach((q, i) => { const d = dist(p, q); if (d < best) { best = d; tg = i; } }); return tg >= 0; }
+function tDrag(w, p) {
+  const ps = T.map(q => P(q.x, q.y)); ps[tg] = P(clamp(p.x, 30, 770), clamp(p.y, 30, 490));
+  if (sideOf(ps[2], ps[0], ps[1]) === sideOf(T[2], T[0], T[1]) && minAng(ps) >= 15) ps.forEach((q, i) => { T[i].x = q.x; T[i].y = q.y; });
+}
+function umFig() {
+  const U = ccenter(...T);
+  return msLine(T[0], T[1]) + msLine(T[1], T[2]) + msLine(T[0], T[2]) + circ(U, dist(U, T[0]), 'ucirc') + poly(T) + dot(U, 10) + text(P(U.x + 28, U.y - 18), 'U') + labT(T);
+}
+function inFig(o = {}) {
+  const W = icenter(...T), r = dline(W, T[0], T[1]), F = footOn(W, T[0], T[1]);
+  let s = bisLine(T[0], T[1], T[2]) + bisLine(T[1], T[2], T[0]) + (o.third === false ? '' : bisLine(T[2], T[0], T[1]));
+  if (o.circle !== false) s += circ(W, r, 'ucirc');
+  if (o.bad) s += circ(W, dist(W, T[0]), 'bad');
+  s += seg(W, F, 'thin') + rightMark(F, dirOf(F, T[1]));
+  return s + poly(T) + dot(W, 10) + text(P(W.x + 28, W.y - 20), 'W') + labT(T);
+}
+
+// ---------- Pool ----------
+const G = [P(130, 450), P(690, 430), P(340, 70)], GW = icenter(...G), GR = dline(GW, G[0], G[1]);
+let Pc = P(260, 380);
+const poolR = c => Math.min(dline(c, G[0], G[1]), dline(c, G[1], G[2]), dline(c, G[2], G[0]));
+function poolFig(o = {}) {
+  const c = o.sol ? GW : Pc, r = poolR(c);
+  let s = poly(G, 'grass');
+  if (o.sol) s += bisLine(G[0], G[1], G[2]) + bisLine(G[1], G[2], G[0]) + bisLine(G[2], G[0], G[1]);
+  return s + poly(G, 'fence') + circ(c, r, 'pool') + dot(c, 7);
+}
+function poolDrag(w, p) { const q = dist(p, GW) < 10 ? P(GW.x, GW.y) : p; if (inside(q, G)) Pc = q; }
+
+// ---------- Aufgabe ----------
+const SIT = [
+  ['Ein Funkmast soll von drei Orten gleich weit weg stehen.', 'u'],
+  ['In eine dreieckige Ecke soll ein möglichst großer runder Tisch.', 'i'],
+  ['Drei Freunde suchen einen Treffpunkt, der für alle gleich weit ist.', 'u'],
+  ['Aus einem dreieckigen Brett soll eine möglichst große runde Scheibe gesägt werden.', 'i'],
+  ['Ein Kreis soll durch alle drei Ecken gehen.', 'u'],
+  ['Ein Kreis soll alle drei Seiten berühren.', 'i']
+];
+let sq = [], sit = null, sitShow = false;
+function newSit() { if (!sq.length) sq = SIT.slice().sort(() => Math.random() - 0.5); sit = sq.pop(); sitShow = false; }
+const ST = [P(170, 430), P(630, 430), P(360, 110)];
+function sitFig() {
+  let s = '';
+  if (sitShow && sit[1] === 'u') { const U = ccenter(...ST); s += circ(U, dist(U, ST[0]), 'ucirc') + dot(U, 9); }
+  if (sitShow && sit[1] === 'i') { const W = icenter(...ST); s += circ(W, dline(W, ST[0], ST[1]), 'ucirc') + dot(W, 9); }
+  return s + poly(ST);
+}
+
+const TD = { down: tDown, drag: tDrag };
+const STEPS = [
+  // Die Frage
+  { t: 'Ein Funkmast für drei Dörfer', enter: () => { Mm = P(560, 220); }, drag: (w, p) => { Mm = P(clamp(p.x, 30, 770), clamp(p.y, 60, 490)); },
+    fig: () => mastFig(), txt: 'Der Mast soll von allen drei Dörfern gleich weit weg stehen. Wo muss er hin?', eq: () => mastEq(false) },
+  // Umkreis
+  { t: 'Gleich weit von A und B', fig: () => mastFig({ ms: 1, mast: false }), txt: 'Auf der Mittelsenkrechten von AB ist es von A und B gleich weit.' },
+  { t: 'Gleich weit von B und C', fig: () => mastFig({ ms: 2, mast: false }), txt: 'Der Schnittpunkt U ist von A, B und C gleich weit weg.' },
+  { t: 'Die dritte Mittelsenkrechte', fig: () => mastFig({ ms: 3, mast: false }), txt: 'Sie geht auch durch U. Darum reichen zwei Mittelsenkrechten.' },
+  { t: 'Der Umkreis', ...TD, fig: umFig,
+    txt: () => inside(ccenter(...T), T) ? 'Der Umkreis geht durch alle drei Ecken. Sein Mittelpunkt U ist der Schnittpunkt der Mittelsenkrechten.' : 'Hat das Dreieck einen stumpfen Winkel, liegt U außerhalb.' },
+  { t: 'Zurück zum Funkmast', rv: 1, fig: () => mastFig({ ms: shown ? 2 : 0, sol: shown, mast: shown }),
+    txt: () => shown ? 'Der Mast steht auf U, dem Mittelpunkt des Umkreises.' : 'Wo muss der Mast hin?', eq: () => shown ? mastEq(true) : '' },
+  // Inkreis
+  { t: 'Ein runder Pool im dreieckigen Garten', enter: () => { Pc = P(260, 380); }, drag: poolDrag, fig: () => poolFig(),
+    txt: 'Der Pool soll so groß wie möglich werden. Wo muss er hin?', eq: () => `Radius: ${cm(poolR(Pc))} m` },
+  { t: 'Gleich weit von zwei Seiten', fig: () => poly(T) + bisLine(T[0], T[1], T[2]) + labT(T), txt: 'Auf der Winkelhalbierenden bei A ist es von den Seiten AB und AC gleich weit.' },
+  { t: 'Und von der dritten Seite', fig: () => inFig({ third: false, circle: false }), txt: 'Der Schnittpunkt W ist von allen drei Seiten gleich weit weg.' },
+  { t: 'Wie groß ist der Radius?', rv: 1, fig: () => inFig({ circle: shown, bad: shown }),
+    txt: () => shown ? 'Richtig ist der senkrechte Abstand von W zur Seite. Bis zur Ecke (rot) ist es zu weit.' : 'Der Kreis um W soll alle drei Seiten berühren.' },
+  { t: 'Der Inkreis', ...TD, fig: () => inFig(), txt: 'Der Inkreis berührt alle drei Seiten. Sein Mittelpunkt W ist der Schnittpunkt der Winkelhalbierenden.' },
+  { t: 'Zurück zum Pool', rv: 1, fig: () => poolFig({ sol: shown }),
+    txt: () => shown ? 'Der größte Pool ist der Inkreis des Gartens.' : 'Wo muss der Pool hin?', eq: () => shown ? `Radius: ${cm(GR)} m` : '' },
+  // Aufgabe
+  { t: 'Aufgabe: Umkreis oder Inkreis?', enter: newSit, fig: sitFig, txt: () => sit[0],
+    btns: [{ l: 'Auflösen', f: () => { sitShow = !sitShow; } }, { l: 'Neue Aufgabe', f: newSit }],
+    eq: () => !sitShow ? '' : sit[1] === 'u' ? 'Umkreis: Schnittpunkt der Mittelsenkrechten' : 'Inkreis: Schnittpunkt der Winkelhalbierenden' }
+];
+
+// ---------- Ablauf ----------
+let step = 0, pair = 0, shown = false, shownStep = -1;
+function render() {
+  const st = STEPS[step];
+  $('title').textContent = typeof st.t === 'function' ? st.t() : st.t;
+  $('fig').innerHTML = st.fig();
+  $('txt').textContent = typeof st.txt === 'function' ? st.txt() : st.txt || '';
+  $('eq').innerHTML = st.eq ? st.eq() : '';
+  if (shownStep !== step) {
+    shownStep = step;
+    $('extras').innerHTML = (st.btns || []).map((b, i) => `<button data-b="${i}">${b.l}</button>`).join('');
+    $('cnt').textContent = `${step + 1} / ${STEPS.length}`;
+    $('prev').disabled = step === 0;
+  }
+  $('next').disabled = step === STEPS.length - 1 && !(st.rv && !shown);
+  const bs = $('extras').children || [];
+  for (let i = 0; i < bs.length; i++) bs[i].disabled = !!(st.btns[i].dis && st.btns[i].dis());
+}
+function go(d) {
+  const n = step + d; if (n < 0 || n >= STEPS.length) return;
+  step = n; pair = 0; shown = false;
+  if (typeof onGo === 'function') onGo();
+  if (STEPS[step].enter) STEPS[step].enter();
+  render();
+}
+$('prev').addEventListener('click', () => go(-1));
+// Bei Folien mit verdecktem Ergebnis deckt der erste Druck auf, der zweite geht weiter.
+const fwd = () => { const st = STEPS[step]; if (st.rv && !shown) { shown = true; render(); } else go(1); };
+$('next').addEventListener('click', fwd);
+$('extras').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  STEPS[step].btns[+b.dataset.b].f(); render();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); fwd(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+});
+
+const fig = $('fig'); let down = false;
+// Zeigerposition in Bildkoordinaten, auch wenn das Bild mit Rand eingepasst ist.
+function svgPt(e) {
+  const r = fig.getBoundingClientRect(), sc = Math.min(r.width / 800, r.height / 520);
+  return P((e.clientX - r.left - (r.width - 800 * sc) / 2) / sc, (e.clientY - r.top - (r.height - 520 * sc) / 2) / sc);
+}
+const ctr = st => typeof st.c === 'function' ? st.c() : st.c || M;
+fig.addEventListener('pointerdown', e => {
+  const st = STEPS[step], p = svgPt(e), w = dirOf(ctr(st), p);
+  if (st.tap) { st.tap(w, p); return render(); }
+  if (!st.drag) return;
+  if (st.down && st.down(p) === false) return;
+  down = true; try { fig.setPointerCapture(e.pointerId); } catch (x) {}
+  st.drag(w, p); render(); e.preventDefault();
+});
+fig.addEventListener('pointermove', e => { const st = STEPS[step]; if (down && st.drag) { const p = svgPt(e); st.drag(dirOf(ctr(st), p), p); render(); } });
+const up = () => { if (down) { down = false; const st = STEPS[step]; if (st.up) { st.up(); render(); } } };
+fig.addEventListener('pointerup', up); fig.addEventListener('pointercancel', up);
+if (typeof onGo === 'function') onGo();
+if (STEPS[0].enter) STEPS[0].enter();
+render();
+</script>
+</body>
+</html>
