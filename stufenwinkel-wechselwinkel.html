@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<title>Stufenwinkel und Wechselwinkel</title>
+<style>
+:root{--bg:#fbfaf6;--fg:#161a22;--mut:#9aa0ad;--line:#d9d7cf;--c1:#2563eb;--c2:#f08a00;--c3:#12a150;--btn:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#f0f2f6;--mut:#7d8596;--line:#343b48;--c1:#5b9bff;--c2:#ffad33;--c3:#3ddc84;--btn:#1f242d}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;height:100dvh;padding:12px 16px calc(12px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none}
+h1{margin:0;font-size:clamp(26px,4.2vw,52px);line-height:1.15;min-height:1.2em}
+#fig{flex:1;min-height:0;width:100%;touch-action:none}
+#txt{font-size:clamp(18px,2.6vw,32px);min-height:1.4em;text-align:center}
+#eq{font-size:clamp(22px,3.6vw,44px);font-weight:700;min-height:1.4em;text-align:center;font-variant-numeric:tabular-nums;line-height:1.35}
+#eq .dim{opacity:.4;font-size:.8em}
+footer{display:flex;gap:10px;align-items:center;margin-top:10px}
+#extras{display:flex;gap:10px;margin:0 auto}
+button{font:inherit;font-size:clamp(16px,2vw,24px);color:inherit;background:var(--btn);border:1px solid var(--line);border-radius:12px;padding:12px 18px;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.3}
+#cnt{color:var(--mut);font-size:clamp(14px,1.6vw,20px);min-width:3.5em;text-align:center}
+#next{background:var(--c1);border-color:var(--c1);color:#fff;font-weight:700}
+svg .ln{stroke:var(--fg);stroke-width:5;stroke-linecap:round;fill:none}
+svg .thin{stroke:var(--fg);stroke-width:3;stroke-linecap:round;fill:none}
+svg .da{stroke:var(--mut);stroke-width:3;stroke-dasharray:12 9;fill:none}
+svg .hi{stroke:var(--c3);stroke-width:5;stroke-linecap:round;fill:none}
+svg .zk{stroke:var(--c2);stroke-width:3;stroke-dasharray:10 8;fill:none}
+svg .wd{stroke:none}
+svg .n{fill:var(--mut);opacity:.3}
+svg .c1{fill:var(--c1);opacity:.62}
+svg .c2{fill:var(--c2);opacity:.62}
+svg .c3{fill:var(--c3);opacity:.62}
+svg .cr{fill:#d81e1e;opacity:.62}
+svg .tx{fill:var(--fg);font:700 30px system-ui,sans-serif}
+svg .ts{fill:var(--mut);font:600 24px system-ui,sans-serif}
+svg .tr{fill:#d81e1e}
+svg .tc1{fill:var(--c1)}
+svg .tc3{fill:var(--c3)}
+svg .pt{fill:var(--fg)}
+svg .mk{fill:var(--c3)}
+svg .hd{fill:var(--c1);opacity:.28}
+svg .ip{fill:var(--c2)}
+svg .asph{fill:#5d626b}
+svg .curb{fill:#c9c6bd}
+svg .strp{stroke:#fff;stroke-width:9}
+svg .strd{stroke:#fff;stroke-width:6;stroke-dasharray:18 12;opacity:.85}
+svg .tk{fill:#fff;font:700 30px system-ui,sans-serif}
+svg .gh{stroke:var(--c1);stroke-width:4;stroke-dasharray:16 10;fill:none}
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<svg id="fig" viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg"></svg>
+<div id="txt"></div>
+<div id="eq"></div>
+<footer>
+  <button id="prev">‹ Zurück</button><span id="cnt"></span>
+  <div id="extras"></div>
+  <button id="next">Weiter ›</button>
+</footer>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+const P = (x, y) => ({ x, y });
+const M = P(400, 260);
+// Winkel mathematisch: gegen den Uhrzeigersinn, 0° zeigt nach rechts.
+const pol = (r, w, c = M) => P(c.x + r * Math.cos(rad(w)), c.y - r * Math.sin(rad(w)));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const dirOf = (c, p) => (deg(Math.atan2(-(p.y - c.y), p.x - c.x)) + 360) % 360;
+const f = n => n.toFixed(1);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[rnd(0, a.length - 1)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const lines = (arr, n = arr.length) => arr.slice(0, n).map((l, i) => `<div class="${i < n - 1 ? 'dim' : ''}">${l}</div>`).join('');
+const text = (p, s, c = 'tx') => `<text class="${c}" x="${f(p.x)}" y="${f(p.y)}" text-anchor="middle" dominant-baseline="central">${s}</text>`;
+const seg = (p, q, c = 'ln') => `<line class="${c}" x1="${f(p.x)}" y1="${f(p.y)}" x2="${f(q.x)}" y2="${f(q.y)}"/>`;
+const dot = (p, r = 8, c = 'pt') => `<circle class="${c}" cx="${f(p.x)}" cy="${f(p.y)}" r="${r}"/>`;
+const circ = (m, r, c = 'thin') => `<circle class="${c}" cx="${f(m.x)}" cy="${f(m.y)}" r="${f(r)}"/>`;
+const handle = p => `<circle class="hd" cx="${f(p.x)}" cy="${f(p.y)}" r="22"/>` + dot(p, 8);
+const poly = (ps, c = 'ln') => `<polygon class="${c}" points="${ps.map(p => f(p.x) + ',' + f(p.y)).join(' ')}"/>`;
+// Gerade durch p mit Richtung w, über das Bild hinaus verlängert.
+const xline = (p, w, c = 'ln') => seg(pol(900, w, p), pol(900, w + 180, p), c);
+// Winkelfläche gegen den Uhrzeigersinn von a1 nach a2, Beschriftung außerhalb des Bogens.
+function wedge(c, a1, a2, r, cls, label, tcls = 'tx', cap = 250) {
+  let d = ((a2 - a1) % 360 + 360) % 360; if (d === 0 && a2 !== a1) d = 360; if (d <= 0) return '';
+  const p1 = pol(r, a1, c), p2 = pol(r, a1 + d, c);
+  let s = d >= 360 ? `<circle class="wd ${cls}" cx="${f(c.x)}" cy="${f(c.y)}" r="${r}"/>`
+    : `<path class="wd ${cls}" d="M${f(c.x)} ${f(c.y)}L${f(p1.x)} ${f(p1.y)}A${r} ${r} 0 ${d > 180 ? 1 : 0} 0 ${f(p2.x)} ${f(p2.y)}Z"/>`;
+  if (label) {
+    const half = String(label).length * 8.5 + 8;
+    const lr = Math.min(cap, Math.max(r + 40, half / Math.tan(rad(Math.min(d, 178) / 2))));
+    s += text(pol(lr, a1 + d / 2, c), label, tcls);
+  }
+  return s;
+}
+// Innenwinkel an Ecke v zwischen den Strahlen zu p und q (kleinerer Winkel).
+function inner(v, p, q, r, cls, label, tcls, cap) {
+  let a1 = dirOf(v, p), a2 = dirOf(v, q);
+  if (((a2 - a1) % 360 + 360) % 360 > 180) [a1, a2] = [a2, a1];
+  return wedge(v, a1, a2, r, cls, label, tcls, cap);
+}
+const angleAt = (v, p, q) => { const d = Math.abs(dirOf(v, p) - dirOf(v, q)); return d > 180 ? 360 - d : d; };
+const cm = px => (Math.round(px / 5) / 10).toFixed(1).replace('.', ',');
+
+// ---------- Zwei Parallelen und eine Gerade ----------
+const GY = 130, HY = 390, F0 = P(400, 260);
+let a = 60, tlt = 0, off = 0, b = 50, marked = false, q8 = null, pq = null;
+const NM = ['α', 'β', 'γ', 'δ'], SUB = ['', '₁'];
+const nm = (k, i) => NM[i] + SUB[k];
+const key = (k, i) => k + ',' + i;
+// Schnittpunkt von f mit der Höhe y.
+const onF = y => P(F0.x + (F0.y - y) / Math.tan(rad(a)), y);
+const C = () => [onF(GY), onF(HY)];
+const U = () => [0, tlt];
+// Die vier Winkel einer Kreuzung, gegen den Uhrzeigersinn ab der Parallelen nach rechts.
+const spans = u => [[u, a], [a, u + 180], [u + 180, a + 180], [a + 180, u + 360]];
+const v = (k, i) => { const d = a - U()[k]; return Math.round(i % 2 ? 180 - d : d); };
+// o.col: Farbe je Winkel, o.names / o.vals: Beschriftung, o.only: nur diese beschriften, o.hidden: Wert verdeckt
+function par(o = {}) {
+  const cs = C(), us = U(); let s = '';
+  for (let k = 0; k < 2; k++) spans(us[k]).forEach((sp, i) => {
+    const kk = key(k, i), col = o.col && o.col[kk];
+    let lab = '';
+    if (o.names && (!o.only || o.only.includes(kk))) lab = !o.vals ? nm(k, i) : (o.hidden && o.hidden[kk]) ? nm(k, i) + ' = ?' : `${nm(k, i)} = ${v(k, i)}°`;
+    if (o.names || col) s += wedge(cs[k], sp[0], sp[1], col ? 78 : 52, col || 'n', lab, 'tx', 150);
+  });
+  s += xline(cs[0], 0) + xline(cs[1], us[1]) + xline(F0, a);
+  const hr = pol((770 - cs[1].x) / Math.cos(rad(us[1])), us[1], cs[1]);
+  s += text(P(770, GY - 26), 'g') + text(P(hr.x, hr.y - 26), 'h') + text(pol(34, a - 90, F0), 'f');
+  if (!o.noPar && tlt === 0) s += text(P(60, 30), 'g ∥ h', 'ts');
+  return s;
+}
+function rot(w) { let n = Math.round(w); if (n >= 180) n -= 180; a = clamp(n, 35, 145); }
+function tilt(w) { let x = w > 180 ? w - 360 : w; if (x > 90) x -= 180; if (x < -90) x += 180; tlt = Math.abs(x) < 2 ? 0 : clamp(Math.round(x), -15, 15); }
+
+// g wird an f entlang auf h geschoben.
+function shiftFig() {
+  const [g0, h0] = C(), Q = P(g0.x + off * (h0.x - g0.x), g0.y + off * (h0.y - g0.y));
+  let s = par({ names: 1, only: off > 0.9 ? [] : ['1,0', '1,1', '1,2', '1,3'] });
+  s += xline(Q, 0, 'gh');
+  spans(0).forEach((sp, i) => { s += wedge(Q, sp[0], sp[1], 78, i % 2 ? 'c2' : 'c1', NM[i], 'tx', 150); });
+  return s;
+}
+function shiftDrag(w, p) {
+  const [g0, h0] = C(), dx = h0.x - g0.x, dy = h0.y - g0.y;
+  const t = ((p.x - g0.x) * dx + (p.y - g0.y) * dy) / (dx * dx + dy * dy);
+  off = t > 0.94 ? 1 : t < 0.04 ? 0 : clamp(t, 0, 1);
+}
+
+// ---------- Parkplatz ----------
+const KY = 400, K1 = P(170, KY), K2 = P(440, KY), K3 = P(710, KY);
+const stripe = (p, w, c = 'strp') => seg(p, pol((KY - 55) / Math.sin(rad(w)), w, p), c);
+function parkFig(q) {
+  let s = `<rect class="asph" x="0" y="40" width="800" height="${KY - 40}"/><rect class="curb" x="0" y="${KY}" width="800" height="36"/>`;
+  s += text(P(400, KY + 64), 'Bordstein', 'ts') + wedge(K1, 0, 65, 62, 'c1', '65°', 'tk') + stripe(K1, 65);
+  if (q) return s + `<circle cx="${K2.x}" cy="${K2.y}" r="9" fill="#fff"/>` + text(pol(100, 45, K2), '?', 'tk');
+  s += wedge(K2, 0, b, 62, b === 65 ? 'c1' : 'cr', b + '°', 'tk') + stripe(K2, b, marked ? 'strp' : 'strd');
+  if (marked) s += wedge(K3, 0, 65, 62, 'c1', '65°', 'tk') + stripe(K3, 65);
+  return s;
+}
+function setB(x) { b = clamp(x, 30, 150); marked = false; }
+
+// ---------- Aufgaben ----------
+function newQ8() { let n; do n = rnd(35, 145); while (n === 90 || n === a); a = n; q8 = { given: key(rnd(0, 1), rnd(0, 3)), shown: {} }; }
+function q8Fig() {
+  const h = {}, c = {};
+  for (let k = 0; k < 2; k++) for (let i = 0; i < 4; i++) {
+    const kk = key(k, i), known = kk === q8.given || q8.shown[kk];
+    h[kk] = !known; if (known) c[kk] = i % 2 ? 'c2' : 'c1';
+  }
+  return par({ names: 1, vals: 1, hidden: h, col: c });
+}
+function q8Tap(w, p) {
+  const cs = C(), k = dist(p, cs[0]) < dist(p, cs[1]) ? 0 : 1, x = dirOf(cs[k], p);
+  const kk = key(k, x < a ? 0 : x < 180 ? 1 : x < 180 + a ? 2 : 3);
+  if (kk !== q8.given) q8.shown[kk] = !q8.shown[kk];
+}
+// Erste Aufgabe ist nicht parallel, danach zufällig.
+function newPq(first) {
+  const old = pq; let n; do n = rnd(50, 130); while (n === 90 || (old && old.a === n));
+  pq = { a: n, d: first === true ? 2 : pick([-2, 0, 2]), show: false }; a = n; tlt = pq.d;
+}
+
+const WP = [[0, 0, 1, 2], [0, 1, 1, 3], [0, 2, 1, 0], [0, 3, 1, 1]];
+const WW = ['α = α₁ &nbsp;&nbsp; Stufenwinkel', 'α₁ = γ₁ &nbsp;&nbsp; Scheitelwinkel', 'Also: α = γ₁'];
+const whyW = n => ({
+  t: 'Warum sind Wechselwinkel gleich groß?', drag: rot,
+  fig: () => { const c = [{ '0,0': 'c1', '1,0': 'c1' }, { '1,0': 'c1', '1,2': 'c3' }, { '0,0': 'c1', '1,2': 'c3' }][n - 1]; return par({ col: c, names: 1, vals: 1, only: Object.keys(c) }); },
+  eq: () => lines(WW, n)
+});
+const onGo = () => { tlt = 0; off = 0; };
+
+const STEPS = [
+  // Die Frage
+  { t: 'Schräge Parkplätze werden markiert', fig: () => parkFig(true), txt: 'Die erste Linie hat 65° zum Bordstein. Die nächste soll parallel sein. Welchen Winkel braucht sie?' },
+  // Stufenwinkel
+  { t: 'Zwei parallele Geraden und eine dritte', drag: rot, fig: () => par(), txt: 'g und h sind parallel. Die Gerade f schneidet beide.' },
+  { t: 'Es entstehen acht Winkel', drag: rot, fig: () => par({ names: 1 }) },
+  { t: 'Stufenwinkel', rv: 1, drag: rot, btns: [{ l: 'Anderes Paar', f: () => { pair++; } }],
+    fig: () => { const i = pair % 4, c = {}, h = {}; c[key(0, i)] = 'c1'; c[key(1, i)] = 'c1'; if (!shown) h[key(1, i)] = 1; return par({ col: c, names: 1, vals: 1, only: Object.keys(c), hidden: h }); },
+    txt: () => shown ? 'Stufenwinkel liegen an beiden Kreuzungen an der gleichen Stelle. Bei parallelen Geraden sind sie gleich groß.' : '',
+    eq: () => { const i = pair % 4; return shown ? `${nm(0, i)} = ${nm(1, i)} = ${v(0, i)}°` : ''; } },
+  { t: 'Warum? Schieb g an f entlang', drag: shiftDrag, fig: shiftFig,
+    txt: () => off === 1 ? 'g liegt jetzt genau auf h. Alle vier Winkel passen aufeinander.' : 'Zieh g an f entlang nach unten.' },
+  { t: 'Und wenn g und h nicht parallel sind?', c: () => C()[1], enter: () => { tlt = 8; }, drag: tilt,
+    fig: () => par({ col: { '0,0': 'c1', '1,0': 'c1' }, names: 1, vals: 1, only: ['0,0', '1,0'] }),
+    txt: () => tlt === 0 ? 'g und h sind parallel. Die Stufenwinkel sind gleich groß.' : 'g und h sind nicht parallel. Die Stufenwinkel sind verschieden groß.',
+    eq: () => `α = ${v(0, 0)}° &nbsp;&nbsp; α₁ = ${v(1, 0)}°` },
+  // Die Antwort
+  { t: 'Zurück zum Parkplatz', c: K2, enter: () => { b = 50; marked = false; },
+    drag: w => { if (w > 180) w = w > 270 ? 0 : 180; setB(Math.round(w / 5) * 5); },
+    btns: [{ l: '− 5°', f: () => setB(b - 5) }, { l: '+ 5°', f: () => setB(b + 5) }, { l: 'Aufmalen', f: () => { marked = true; }, dis: () => marked || b !== 65 }],
+    fig: () => parkFig(false),
+    txt: () => b === 65 ? 'Gleiche Stufenwinkel: Die Linien sind parallel.' : 'Verschiedene Stufenwinkel: Die Linien sind nicht parallel.',
+    eq: () => `65° ${b === 65 ? '=' : '≠'} ${b}°` },
+  // Wechselwinkel
+  { t: 'Wechselwinkel', rv: 1, drag: rot, btns: [{ l: 'Anderes Paar', f: () => { pair++; } }],
+    fig: () => { const [k1, i1, k2, i2] = WP[pair % 4], c = {}, h = {}; c[key(k1, i1)] = 'c1'; c[key(k2, i2)] = 'c3'; if (!shown) h[key(k2, i2)] = 1; return par({ col: c, names: 1, vals: 1, only: Object.keys(c), hidden: h }); },
+    txt: () => shown ? 'Wechselwinkel liegen auf verschiedenen Seiten von f und an verschiedenen Parallelen. Bei parallelen Geraden sind sie gleich groß.' : '',
+    eq: () => { const [k1, i1, k2, i2] = WP[pair % 4]; return shown ? `${nm(k1, i1)} = ${nm(k2, i2)} = ${v(k1, i1)}°` : ''; } },
+  whyW(1), whyW(2), whyW(3),
+  // Aufgaben
+  { t: 'Aufgabe: Ein Winkel reicht für alle acht', enter: newQ8, tap: q8Tap, btns: [{ l: 'Neue Aufgabe', f: newQ8 }], fig: q8Fig },
+  { t: 'Aufgabe: Parallel oder nicht?', enter: () => newPq(true), btns: [{ l: 'Auflösen', f: () => { pq.show = !pq.show; } }, { l: 'Neue Aufgabe', f: newPq }],
+    fig: () => par({ col: { '0,0': 'c1', '1,0': 'c1' }, names: 1, vals: 1, only: ['0,0', '1,0'], noPar: 1 }), txt: 'Sind g und h parallel?',
+    eq: () => !pq.show ? '' : pq.d ? `α = ${v(0, 0)}°, α₁ = ${v(1, 0)}°. Verschieden, also nicht parallel!` : `α = α₁ = ${v(0, 0)}°. Gleich, also parallel!` }
+];
+
+// ---------- Ablauf ----------
+let step = 0, pair = 0, shown = false, shownStep = -1;
+function render() {
+  const st = STEPS[step];
+  $('title').textContent = typeof st.t === 'function' ? st.t() : st.t;
+  $('fig').innerHTML = st.fig();
+  $('txt').textContent = typeof st.txt === 'function' ? st.txt() : st.txt || '';
+  $('eq').innerHTML = st.eq ? st.eq() : '';
+  if (shownStep !== step) {
+    shownStep = step;
+    $('extras').innerHTML = (st.btns || []).map((b, i) => `<button data-b="${i}">${b.l}</button>`).join('');
+    $('cnt').textContent = `${step + 1} / ${STEPS.length}`;
+    $('prev').disabled = step === 0;
+  }
+  $('next').disabled = step === STEPS.length - 1 && !(st.rv && !shown);
+  const bs = $('extras').children || [];
+  for (let i = 0; i < bs.length; i++) bs[i].disabled = !!(st.btns[i].dis && st.btns[i].dis());
+}
+function go(d) {
+  const n = step + d; if (n < 0 || n >= STEPS.length) return;
+  step = n; pair = 0; shown = false;
+  if (typeof onGo === 'function') onGo();
+  if (STEPS[step].enter) STEPS[step].enter();
+  render();
+}
+$('prev').addEventListener('click', () => go(-1));
+// Bei Folien mit verdecktem Ergebnis deckt der erste Druck auf, der zweite geht weiter.
+const fwd = () => { const st = STEPS[step]; if (st.rv && !shown) { shown = true; render(); } else go(1); };
+$('next').addEventListener('click', fwd);
+$('extras').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  STEPS[step].btns[+b.dataset.b].f(); render();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); fwd(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+});
+
+const fig = $('fig'); let down = false;
+// Zeigerposition in Bildkoordinaten, auch wenn das Bild mit Rand eingepasst ist.
+function svgPt(e) {
+  const r = fig.getBoundingClientRect(), sc = Math.min(r.width / 800, r.height / 520);
+  return P((e.clientX - r.left - (r.width - 800 * sc) / 2) / sc, (e.clientY - r.top - (r.height - 520 * sc) / 2) / sc);
+}
+const ctr = st => typeof st.c === 'function' ? st.c() : st.c || M;
+fig.addEventListener('pointerdown', e => {
+  const st = STEPS[step], p = svgPt(e), w = dirOf(ctr(st), p);
+  if (st.tap) { st.tap(w, p); return render(); }
+  if (!st.drag) return;
+  if (st.down && st.down(p) === false) return;
+  down = true; try { fig.setPointerCapture(e.pointerId); } catch (x) {}
+  st.drag(w, p); render(); e.preventDefault();
+});
+fig.addEventListener('pointermove', e => { const st = STEPS[step]; if (down && st.drag) { const p = svgPt(e); st.drag(dirOf(ctr(st), p), p); render(); } });
+const up = () => { if (down) { down = false; const st = STEPS[step]; if (st.up) { st.up(); render(); } } };
+fig.addEventListener('pointerup', up); fig.addEventListener('pointercancel', up);
+if (typeof onGo === 'function') onGo();
+if (STEPS[0].enter) STEPS[0].enter();
+render();
+</script>
+</body>
+</html>
