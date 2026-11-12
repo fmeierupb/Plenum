@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<title>Winkelsumme im Dreieck und Viereck</title>
+<style>
+:root{--bg:#fbfaf6;--fg:#161a22;--mut:#9aa0ad;--line:#d9d7cf;--c1:#2563eb;--c2:#f08a00;--c3:#12a150;--btn:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#f0f2f6;--mut:#7d8596;--line:#343b48;--c1:#5b9bff;--c2:#ffad33;--c3:#3ddc84;--btn:#1f242d}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;height:100dvh;padding:12px 16px calc(12px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none}
+h1{margin:0;font-size:clamp(26px,4.2vw,52px);line-height:1.15;min-height:1.2em}
+#fig{flex:1;min-height:0;width:100%;touch-action:none}
+#txt{font-size:clamp(18px,2.6vw,32px);min-height:1.4em;text-align:center}
+#eq{font-size:clamp(22px,3.6vw,44px);font-weight:700;min-height:1.4em;text-align:center;font-variant-numeric:tabular-nums;line-height:1.35}
+#eq .dim{opacity:.4;font-size:.8em}
+footer{display:flex;gap:10px;align-items:center;margin-top:10px}
+#extras{display:flex;gap:10px;margin:0 auto}
+button{font:inherit;font-size:clamp(16px,2vw,24px);color:inherit;background:var(--btn);border:1px solid var(--line);border-radius:12px;padding:12px 18px;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.3}
+#cnt{color:var(--mut);font-size:clamp(14px,1.6vw,20px);min-width:3.5em;text-align:center}
+#next{background:var(--c1);border-color:var(--c1);color:#fff;font-weight:700}
+svg .ln{stroke:var(--fg);stroke-width:5;stroke-linecap:round;fill:none}
+svg .thin{stroke:var(--fg);stroke-width:3;stroke-linecap:round;fill:none}
+svg .da{stroke:var(--mut);stroke-width:3;stroke-dasharray:12 9;fill:none}
+svg .hi{stroke:var(--c3);stroke-width:5;stroke-linecap:round;fill:none}
+svg .zk{stroke:var(--c2);stroke-width:3;stroke-dasharray:10 8;fill:none}
+svg .wd{stroke:none}
+svg .n{fill:var(--mut);opacity:.3}
+svg .c1{fill:var(--c1);opacity:.62}
+svg .c2{fill:var(--c2);opacity:.62}
+svg .c3{fill:var(--c3);opacity:.62}
+svg .cr{fill:#d81e1e;opacity:.62}
+svg .tx{fill:var(--fg);font:700 30px system-ui,sans-serif}
+svg .ts{fill:var(--mut);font:600 24px system-ui,sans-serif}
+svg .tr{fill:#d81e1e}
+svg .tc1{fill:var(--c1)}
+svg .tc3{fill:var(--c3)}
+svg .pt{fill:var(--fg)}
+svg .mk{fill:var(--c3)}
+svg .hd{fill:var(--c1);opacity:.28}
+svg .ip{fill:var(--c2)}
+svg .roof{fill:#b5533c;opacity:.28}
+svg .house{fill:var(--mut);opacity:.2}
+svg .t1{fill:var(--c1);opacity:.14}
+svg .t2{fill:var(--c2);opacity:.16}
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<svg id="fig" viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg"></svg>
+<div id="txt"></div>
+<div id="eq"></div>
+<footer>
+  <button id="prev">‹ Zurück</button><span id="cnt"></span>
+  <div id="extras"></div>
+  <button id="next">Weiter ›</button>
+</footer>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+const P = (x, y) => ({ x, y });
+const M = P(400, 260);
+// Winkel mathematisch: gegen den Uhrzeigersinn, 0° zeigt nach rechts.
+const pol = (r, w, c = M) => P(c.x + r * Math.cos(rad(w)), c.y - r * Math.sin(rad(w)));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const dirOf = (c, p) => (deg(Math.atan2(-(p.y - c.y), p.x - c.x)) + 360) % 360;
+const f = n => n.toFixed(1);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[rnd(0, a.length - 1)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const lines = (arr, n = arr.length) => arr.slice(0, n).map((l, i) => `<div class="${i < n - 1 ? 'dim' : ''}">${l}</div>`).join('');
+const text = (p, s, c = 'tx') => `<text class="${c}" x="${f(p.x)}" y="${f(p.y)}" text-anchor="middle" dominant-baseline="central">${s}</text>`;
+const seg = (p, q, c = 'ln') => `<line class="${c}" x1="${f(p.x)}" y1="${f(p.y)}" x2="${f(q.x)}" y2="${f(q.y)}"/>`;
+const dot = (p, r = 8, c = 'pt') => `<circle class="${c}" cx="${f(p.x)}" cy="${f(p.y)}" r="${r}"/>`;
+const circ = (m, r, c = 'thin') => `<circle class="${c}" cx="${f(m.x)}" cy="${f(m.y)}" r="${f(r)}"/>`;
+const handle = p => `<circle class="hd" cx="${f(p.x)}" cy="${f(p.y)}" r="22"/>` + dot(p, 8);
+const poly = (ps, c = 'ln') => `<polygon class="${c}" points="${ps.map(p => f(p.x) + ',' + f(p.y)).join(' ')}"/>`;
+// Gerade durch p mit Richtung w, über das Bild hinaus verlängert.
+const xline = (p, w, c = 'ln') => seg(pol(900, w, p), pol(900, w + 180, p), c);
+// Winkelfläche gegen den Uhrzeigersinn von a1 nach a2, Beschriftung außerhalb des Bogens.
+function wedge(c, a1, a2, r, cls, label, tcls = 'tx', cap = 250) {
+  let d = ((a2 - a1) % 360 + 360) % 360; if (d === 0 && a2 !== a1) d = 360; if (d <= 0) return '';
+  const p1 = pol(r, a1, c), p2 = pol(r, a1 + d, c);
+  let s = d >= 360 ? `<circle class="wd ${cls}" cx="${f(c.x)}" cy="${f(c.y)}" r="${r}"/>`
+    : `<path class="wd ${cls}" d="M${f(c.x)} ${f(c.y)}L${f(p1.x)} ${f(p1.y)}A${r} ${r} 0 ${d > 180 ? 1 : 0} 0 ${f(p2.x)} ${f(p2.y)}Z"/>`;
+  if (label) {
+    const half = String(label).length * 8.5 + 8;
+    const lr = Math.min(cap, Math.max(r + 40, half / Math.tan(rad(Math.min(d, 178) / 2))));
+    s += text(pol(lr, a1 + d / 2, c), label, tcls);
+  }
+  return s;
+}
+// Innenwinkel an Ecke v zwischen den Strahlen zu p und q (kleinerer Winkel).
+function inner(v, p, q, r, cls, label, tcls, cap) {
+  let a1 = dirOf(v, p), a2 = dirOf(v, q);
+  if (((a2 - a1) % 360 + 360) % 360 > 180) [a1, a2] = [a2, a1];
+  return wedge(v, a1, a2, r, cls, label, tcls, cap);
+}
+const angleAt = (v, p, q) => { const d = Math.abs(dirOf(v, p) - dirOf(v, q)); return d > 180 ? 360 - d : d; };
+const cm = px => (Math.round(px / 5) / 10).toFixed(1).replace('.', ',');
+
+const rows = arr => arr.map(l => `<div>${l}</div>`).join('');
+const GR = ['α', 'β', 'γ', 'δ'], CL = ['c1', 'c2', 'c3', 'cr'];
+
+// ---------- Dach ----------
+let n = 35;
+const EL = P(150, 300), ER = P(650, 300);
+function roofFig(show) {
+  const T = P(400, 300 - 250 * Math.tan(rad(n)));
+  let s = `<rect class="house" x="190" y="300" width="420" height="180"/>` + poly([EL, ER, T], 'roof') + poly([EL, ER, T]);
+  s += seg(P(190, 300), P(190, 480), 'thin') + seg(P(610, 300), P(610, 480), 'thin') + seg(P(120, 480), P(680, 480), 'thin');
+  s += wedge(EL, 0, n, 64, 'c1', n + '°') + wedge(ER, 180 - n, 180, 64, 'c2', n + '°');
+  s += wedge(T, 180 + n, 360 - n, 56, 'c3', show ? (180 - 2 * n) + '°' : '?');
+  return s + text(P(T.x, T.y - 28), 'First', 'ts');
+}
+const setN = x => { n = clamp(x, 20, 45); };
+
+// ---------- Dreieck zum Ziehen ----------
+const A = P(180, 420), B = P(620, 420), Cc = P(330, 130);
+let grab = null;
+const tAng = () => { const ra = Math.round(dirOf(A, Cc)), rb = Math.round(180 - dirOf(B, Cc)); return [ra, rb, 180 - ra - rb]; };
+const out = (p, c, d = 30) => { const l = dist(p, c) || 1; return P(p.x + (p.x - c.x) / l * d, p.y + (p.y - c.y) / l * d); };
+// o.vals: Werte zeigen, o.par: Parallele durch C, o.cA / o.cB: α und β oben bei C
+function triFig(o = {}) {
+  const [ra, rb, rg] = tAng(), lab = (i, v) => o.vals ? `${GR[i]} = ${v}°` : GR[i];
+  let s = '';
+  if (o.par) s += xline(Cc, 0, 'da');
+  s += wedge(A, 0, dirOf(A, Cc), 62, 'c1', lab(0, ra), 'tx', 140);
+  s += wedge(B, dirOf(B, Cc), 180, 62, 'c2', lab(1, rb), 'tx', 140);
+  s += wedge(Cc, dirOf(Cc, A), dirOf(Cc, B), 62, 'c3', lab(2, rg), 'tx', 140);
+  if (o.cA) s += wedge(Cc, 180, dirOf(Cc, A), 62, 'c1', lab(0, ra), 'tx', 140);
+  if (o.cB) s += wedge(Cc, dirOf(Cc, B), 360, 62, 'c2', lab(1, rb), 'tx', 140);
+  s += poly([A, B, Cc]);
+  const m = P((A.x + B.x + Cc.x) / 3, (A.y + B.y + Cc.y) / 3);
+  return s + text(out(A, m), 'A') + text(out(B, m), 'B') + text(o.par ? P(Cc.x + 26, Cc.y - 30) : out(Cc, m), 'C');
+}
+function triDown(p) {
+  grab = null; let best = 90;
+  [[A, 'A'], [B, 'B'], [Cc, 'C']].forEach(([q, k]) => { const d = dist(p, q); if (d < best) { best = d; grab = k; } });
+  return grab ? true : false;
+}
+function triDrag(w, p) {
+  if (grab === 'A') A.x = clamp(p.x, 40, B.x - 140);
+  else if (grab === 'B') B.x = clamp(p.x, A.x + 140, 760);
+  else if (grab === 'C') { Cc.x = clamp(p.x, 40, 760); Cc.y = clamp(p.y, 40, 320); }
+}
+
+// ---------- Viereck zum Ziehen ----------
+const Q = [P(170, 430), P(620, 430), P(590, 170), P(230, 110)];
+let qgrab = -1;
+const qAng = () => { const r = Q.map((v, i) => Math.round(angleAt(v, Q[(i + 3) % 4], Q[(i + 1) % 4]))); r[3] = 360 - r[0] - r[1] - r[2]; return r; };
+function convexOk(ps) {
+  let sg = 0;
+  for (let i = 0; i < 4; i++) {
+    const p = ps[i], q = ps[(i + 1) % 4], r = ps[(i + 2) % 4];
+    const cr = (q.x - p.x) * (r.y - q.y) - (q.y - p.y) * (r.x - q.x);
+    if (Math.abs(cr) < 1e-6) return false;
+    if (sg === 0) sg = Math.sign(cr); else if (Math.sign(cr) !== sg) return false;
+  }
+  return ps.every((v, i) => angleAt(v, ps[(i + 3) % 4], ps[(i + 1) % 4]) >= 25);
+}
+function quadFig(o = {}) {
+  const r = qAng(); let s = '';
+  if (o.split) s += poly([Q[0], Q[1], Q[2]], 't1') + poly([Q[0], Q[2], Q[3]], 't2') + seg(Q[0], Q[2], 'da');
+  Q.forEach((v, i) => { s += inner(v, Q[(i + 3) % 4], Q[(i + 1) % 4], 58, CL[i], o.vals ? `${GR[i]} = ${r[i]}°` : GR[i], 'tx', 140); });
+  s += poly(Q);
+  const m = P(Q.reduce((t, p) => t + p.x, 0) / 4, Q.reduce((t, p) => t + p.y, 0) / 4);
+  Q.forEach((v, i) => { s += text(out(v, m), 'ABCD'[i]); });
+  return s;
+}
+function quadDown(p) { qgrab = -1; let best = 90; Q.forEach((q, i) => { const d = dist(p, q); if (d < best) { best = d; qgrab = i; } }); return qgrab >= 0; }
+function quadDrag(w, p) {
+  const ps = Q.map(q => P(q.x, q.y));
+  if (qgrab < 2) ps[qgrab].x = clamp(p.x, 40, 760);
+  else ps[qgrab] = P(clamp(p.x, 40, 760), clamp(p.y, 30, 380));
+  if (ps[1].x - ps[0].x >= 140 && convexOk(ps)) ps.forEach((q, i) => { Q[i].x = q.x; Q[i].y = q.y; });
+}
+
+// ---------- Aufgaben ----------
+function fit(pts, x0, y0, x1, y1) {
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const a = Math.min(...xs), b = Math.max(...xs), c = Math.min(...ys), d = Math.max(...ys);
+  const sc = Math.min((x1 - x0) / (b - a), (y1 - y0) / (d - c));
+  const ox = (x0 + x1) / 2 - sc * (a + b) / 2, oy = (y0 + y1) / 2 - sc * (c + d) / 2;
+  return pts.map(p => P(ox + sc * p.x, oy + sc * p.y));
+}
+function isect(p, u, q, v) {
+  const det = u.x * v.y - u.y * v.x; if (Math.abs(det) < 1e-9) return null;
+  const dx = q.x - p.x, dy = q.y - p.y;
+  return { t: (dx * v.y - dy * v.x) / det, s: (dx * u.y - dy * u.x) / det, pt: P(p.x + (dx * v.y - dy * v.x) / det * u.x, p.y + (dx * v.y - dy * v.x) / det * u.y) };
+}
+let tq = null, qq = null;
+function newTq() {
+  const old = tq; let al, be, ga;
+  do { al = rnd(6, 16) * 5; be = rnd(6, 16) * 5; ga = 180 - al - be; } while (ga < 30 || al === be || be === ga || al === ga || (old && old.v[0] === al && old.v[1] === be));
+  const b = Math.sin(rad(be)) / Math.sin(rad(ga));
+  tq = { v: [al, be, ga], u: rnd(0, 2), show: false, ps: fit([P(0, 0), P(1, 0), P(b * Math.cos(rad(al)), -b * Math.sin(rad(al)))], 140, 60, 660, 440) };
+}
+function newQq() {
+  const old = qq;
+  for (let k = 0; k < 400; k++) {
+    const al = rnd(12, 24) * 5, be = rnd(12, 24) * 5, ga = rnd(12, 24) * 5, de = 360 - al - be - ga;
+    if (de < 50 || de > 130 || (old && old.v[0] === al && old.v[1] === be)) continue;
+    const p = 0.6 + Math.random() * 0.5, a0 = P(0, 0), b0 = P(1, 0), d0 = P(p * Math.cos(rad(al)), p * Math.sin(rad(al)));
+    const db = 180 - be, dd = al + 180 + de;
+    const r = isect(b0, P(Math.cos(rad(db)), Math.sin(rad(db))), d0, P(Math.cos(rad(dd)), Math.sin(rad(dd))));
+    if (!r || r.t < 0.35 || r.s < 0.35 || r.t > 2 || r.s > 2) continue;
+    qq = { v: [al, be, ga, de], u: rnd(0, 3), show: false, ps: fit([a0, b0, r.pt, d0].map(q => P(q.x, -q.y)), 140, 50, 660, 450) };
+    return;
+  }
+  qq = { v: [90, 90, 90, 90], u: 3, show: false, ps: [P(200, 420), P(600, 420), P(600, 120), P(200, 120)] };
+}
+function taskFig(t) {
+  const ps = t.ps, k = ps.length; let s = '';
+  ps.forEach((v, i) => { const hid = i === t.u && !t.show; s += inner(v, ps[(i + k - 1) % k], ps[(i + 1) % k], 58, hid ? 'n' : CL[i], `${GR[i]} = ${hid ? '?' : t.v[i] + '°'}`, 'tx', 140); });
+  return s + poly(ps);
+}
+function taskEq(t, sum) {
+  if (!t.show) return '';
+  const k = t.v.length, u = GR[t.u], o = [...Array(k).keys()].filter(i => i !== t.u);
+  return rows([`${GR.slice(0, k).join(' + ')} = ${sum}° &nbsp;&nbsp;| ${o.map(i => '− ' + GR[i]).join(' ')}`,
+    `${u} = ${sum}° ${o.map(i => '− ' + GR[i]).join(' ')}`,
+    `${u} = ${sum}° ${o.map(i => '− ' + t.v[i] + '°').join(' ')} = ${t.v[t.u]}°`]);
+}
+
+const TD = { down: triDown, drag: triDrag };
+const STEPS = [
+  // Die Frage
+  { t: 'Ein Satteldach', fig: () => roofFig(false), txt: 'Das Dach ist auf beiden Seiten 35° geneigt. Unter welchem Winkel treffen sich die Balken oben am First?', enter: () => { n = 35; } },
+  // Dreieck
+  { t: 'Ein Dreieck hat drei Innenwinkel', ...TD, fig: () => triFig() },
+  { t: 'Was fällt auf?', rv: 1, ...TD, fig: () => triFig({ vals: 1 }),
+    txt: () => shown ? 'Im Dreieck sind alle drei Winkel zusammen 180°.' : '',
+    eq: () => { const [a, b, c] = tAng(); return shown ? `${a}° + ${b}° + ${c}° = 180°` : ''; } },
+  { t: 'Warum? Eine Parallele zu AB durch C', ...TD, fig: () => triFig({ vals: 1, par: 1 }) },
+  { t: 'α taucht oben wieder auf', ...TD, fig: () => triFig({ vals: 1, par: 1, cA: 1 }), txt: 'α und das obere α sind Wechselwinkel an den Parallelen.' },
+  { t: 'β auch', ...TD, fig: () => triFig({ vals: 1, par: 1, cA: 1, cB: 1 }), txt: 'Auch β ist ein Wechselwinkel.' },
+  { t: 'Oben liegen α, γ und β an einer Geraden', ...TD, fig: () => triFig({ vals: 1, par: 1, cA: 1, cB: 1 }),
+    txt: 'Zusammen ergeben sie eine gerade Linie.', eq: () => 'α + γ + β = 180°' },
+  // Die Antwort
+  { t: 'Zurück zum Dach', rv: 1, enter: () => { n = 35; },
+    btns: [{ l: '− 5°', f: () => setN(n - 5) }, { l: '+ 5°', f: () => setN(n + 5) }],
+    fig: () => roofFig(shown),
+    eq: () => shown ? rows(['α + β + γ = 180° &nbsp;&nbsp;| − α − β', 'γ = 180° − α − β', `γ = 180° − ${n}° − ${n}° = ${180 - 2 * n}°`]) : '' },
+  // Viereck
+  { t: 'Ein Viereck hat vier Innenwinkel', rv: 1, down: quadDown, drag: quadDrag, fig: () => quadFig({ vals: 1 }),
+    txt: () => shown ? 'Im Viereck sind alle vier Winkel zusammen 360°.' : 'Was fällt auf?',
+    eq: () => shown ? qAng().map(x => x + '°').join(' + ') + ' = 360°' : '' },
+  { t: 'Warum 360°?', down: quadDown, drag: quadDrag, fig: () => quadFig({ vals: 1, split: 1 }),
+    txt: 'Die Diagonale teilt das Viereck in zwei Dreiecke.', eq: () => '2 · 180° = 360°' },
+  // Aufgaben
+  { t: 'Aufgabe: Der fehlende Winkel im Dreieck', enter: newTq, fig: () => taskFig(tq),
+    btns: [{ l: 'Auflösen', f: () => { tq.show = !tq.show; } }, { l: 'Neue Aufgabe', f: newTq }], eq: () => taskEq(tq, 180) },
+  { t: 'Aufgabe: Der fehlende Winkel im Viereck', enter: newQq, fig: () => taskFig(qq),
+    btns: [{ l: 'Auflösen', f: () => { qq.show = !qq.show; } }, { l: 'Neue Aufgabe', f: newQq }], eq: () => taskEq(qq, 360) }
+];
+
+// ---------- Ablauf ----------
+let step = 0, pair = 0, shown = false, shownStep = -1;
+function render() {
+  const st = STEPS[step];
+  $('title').textContent = typeof st.t === 'function' ? st.t() : st.t;
+  $('fig').innerHTML = st.fig();
+  $('txt').textContent = typeof st.txt === 'function' ? st.txt() : st.txt || '';
+  $('eq').innerHTML = st.eq ? st.eq() : '';
+  if (shownStep !== step) {
+    shownStep = step;
+    $('extras').innerHTML = (st.btns || []).map((b, i) => `<button data-b="${i}">${b.l}</button>`).join('');
+    $('cnt').textContent = `${step + 1} / ${STEPS.length}`;
+    $('prev').disabled = step === 0;
+  }
+  $('next').disabled = step === STEPS.length - 1 && !(st.rv && !shown);
+  const bs = $('extras').children || [];
+  for (let i = 0; i < bs.length; i++) bs[i].disabled = !!(st.btns[i].dis && st.btns[i].dis());
+}
+function go(d) {
+  const n = step + d; if (n < 0 || n >= STEPS.length) return;
+  step = n; pair = 0; shown = false;
+  if (typeof onGo === 'function') onGo();
+  if (STEPS[step].enter) STEPS[step].enter();
+  render();
+}
+$('prev').addEventListener('click', () => go(-1));
+// Bei Folien mit verdecktem Ergebnis deckt der erste Druck auf, der zweite geht weiter.
+const fwd = () => { const st = STEPS[step]; if (st.rv && !shown) { shown = true; render(); } else go(1); };
+$('next').addEventListener('click', fwd);
+$('extras').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  STEPS[step].btns[+b.dataset.b].f(); render();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); fwd(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+});
+
+const fig = $('fig'); let down = false;
+// Zeigerposition in Bildkoordinaten, auch wenn das Bild mit Rand eingepasst ist.
+function svgPt(e) {
+  const r = fig.getBoundingClientRect(), sc = Math.min(r.width / 800, r.height / 520);
+  return P((e.clientX - r.left - (r.width - 800 * sc) / 2) / sc, (e.clientY - r.top - (r.height - 520 * sc) / 2) / sc);
+}
+const ctr = st => typeof st.c === 'function' ? st.c() : st.c || M;
+fig.addEventListener('pointerdown', e => {
+  const st = STEPS[step], p = svgPt(e), w = dirOf(ctr(st), p);
+  if (st.tap) { st.tap(w, p); return render(); }
+  if (!st.drag) return;
+  if (st.down && st.down(p) === false) return;
+  down = true; try { fig.setPointerCapture(e.pointerId); } catch (x) {}
+  st.drag(w, p); render(); e.preventDefault();
+});
+fig.addEventListener('pointermove', e => { const st = STEPS[step]; if (down && st.drag) { const p = svgPt(e); st.drag(dirOf(ctr(st), p), p); render(); } });
+const up = () => { if (down) { down = false; const st = STEPS[step]; if (st.up) { st.up(); render(); } } };
+fig.addEventListener('pointerup', up); fig.addEventListener('pointercancel', up);
+if (typeof onGo === 'function') onGo();
+if (STEPS[0].enter) STEPS[0].enter();
+render();
+</script>
+</body>
+</html>
