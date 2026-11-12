@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<title>Winkel an Kreuzungen</title>
+<style>
+:root{--bg:#fbfaf6;--fg:#161a22;--mut:#9aa0ad;--line:#d9d7cf;--c1:#2563eb;--c2:#f08a00;--c3:#12a150;--btn:#fff;--wood:#dcae6c;--woodb:#7a4e22}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#f0f2f6;--mut:#7d8596;--line:#343b48;--c1:#5b9bff;--c2:#ffad33;--c3:#3ddc84;--btn:#1f242d;--wood:#c99a5b}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;height:100dvh;padding:12px 16px calc(12px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none}
+h1{margin:0;font-size:clamp(26px,4.2vw,52px);line-height:1.15;min-height:1.2em}
+#fig{flex:1;min-height:0;width:100%;touch-action:none}
+#txt{font-size:clamp(18px,2.6vw,32px);min-height:1.4em;text-align:center}
+#eq{font-size:clamp(22px,3.6vw,44px);font-weight:700;min-height:1.4em;text-align:center;font-variant-numeric:tabular-nums;line-height:1.35}
+#eq .dim{opacity:.4;font-size:.8em}
+footer{display:flex;gap:10px;align-items:center;margin-top:10px}
+#extras{display:flex;gap:10px;margin:0 auto}
+button{font:inherit;font-size:clamp(16px,2vw,24px);color:inherit;background:var(--btn);border:1px solid var(--line);border-radius:12px;padding:12px 18px;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.3}
+#cnt{color:var(--mut);font-size:clamp(14px,1.6vw,20px);min-width:3.5em;text-align:center}
+#next{background:var(--c1);border-color:var(--c1);color:#fff;font-weight:700}
+svg .ln{stroke:var(--fg);stroke-width:5;stroke-linecap:round}
+svg .wd{stroke:none}
+svg .n{fill:var(--mut);opacity:.3}
+svg .c1{fill:var(--c1);opacity:.62}
+svg .c2{fill:var(--c2);opacity:.62}
+svg .c3{fill:var(--c3);opacity:.62}
+svg .tx{fill:var(--fg);font:700 30px system-ui,sans-serif}
+svg .tw{fill:#20140a;font:700 30px system-ui,sans-serif}
+svg .cr{fill:#d81e1e;opacity:.62}
+svg .tr{fill:#d81e1e}
+svg .tc1{fill:var(--c1)}
+svg .tc2{fill:var(--c2)}
+svg .ts{fill:#20140a;font:600 22px system-ui,sans-serif;opacity:.7}
+svg .wood{fill:var(--wood)}
+svg .woodb{fill:none;stroke:var(--woodb);stroke-width:3;stroke-linejoin:round}
+svg .grain{stroke:var(--woodb);stroke-width:1.5;opacity:.3}
+svg .wall{fill:var(--mut);opacity:.3}
+svg .pt{fill:var(--fg)}
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<svg id="fig" viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg"></svg>
+<div id="txt"></div>
+<div id="eq"></div>
+<footer>
+  <button id="prev">‹ Zurück</button><span id="cnt"></span>
+  <div id="extras"></div>
+  <button id="next">Weiter ›</button>
+</footer>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const rad = d => d * Math.PI / 180;
+const M = { x: 400, y: 260 };
+// Winkel mathematisch: gegen den Uhrzeigersinn, 0° zeigt nach rechts.
+const pol = (r, w, c = M) => ({ x: c.x + r * Math.cos(rad(w)), y: c.y - r * Math.sin(rad(w)) });
+const f = n => n.toFixed(1);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const GR = { al: 'α', be: 'β', ga: 'γ', de: 'δ' }, KEYS = ['al', 'be', 'ga', 'de'];
+
+// Zustand
+let a = 35, aw = 35, beta = 130, t = 0, step = 0, pair = 0, rev = false, shown = false, joined = false;
+let quiz = { given: 'al', shown: {} }, kn = null;
+const val = k => (k === 'al' || k === 'ga') ? a : 180 - a;
+
+// ---------- Zeichenhelfer ----------
+const text = (p, s, c = 'tx') => `<text class="${c}" x="${f(p.x)}" y="${f(p.y)}" text-anchor="middle" dominant-baseline="central">${s}</text>`;
+const seg = (p, q, c = 'ln') => `<line class="${c}" x1="${f(p.x)}" y1="${f(p.y)}" x2="${f(q.x)}" y2="${f(q.y)}"/>`;
+const dot = (p, r = 8) => `<circle class="pt" cx="${f(p.x)}" cy="${f(p.y)}" r="${r}"/>`;
+function wedge(c, a1, a2, r, cls, label, tcls) {
+  const d = a2 - a1; if (d <= 0) return '';
+  const p1 = pol(r, a1, c), p2 = pol(r, a2, c);
+  let s = d >= 360 ? `<circle class="wd ${cls}" cx="${c.x}" cy="${c.y}" r="${r}"/>`
+    : `<path class="wd ${cls}" d="M${f(c.x)} ${f(c.y)}L${f(p1.x)} ${f(p1.y)}A${r} ${r} 0 ${d > 180 ? 1 : 0} 0 ${f(p2.x)} ${f(p2.y)}Z"/>`;
+  if (label) {
+    const half = String(label).length * 8.5 + 8;
+    const lr = Math.min(250, Math.max(r + 42, half / Math.tan(rad(Math.min(d, 178) / 2))));
+    s += text(pol(lr, a1 + d / 2, c), label, tcls);
+  }
+  return s;
+}
+
+// ---------- Fußleiste ----------
+const Y0 = 270, Y1 = 330, H = Y1 - Y0, JR = { x: 418, y: Y1 }, JL = { x: 382, y: Y1 }, J0 = { x: 400, y: Y1 };
+let pid = 0;
+// Holzstück als Vieleck. e zeigt entlang der Maserung, n quer dazu ins Holz.
+function piece(pts, o, e, n) {
+  const id = 'p' + (pid++), d = pts.map(p => f(p.x) + ',' + f(p.y)).join(' ');
+  let g = '';
+  for (let k = 1; k <= 4; k++) {
+    const q = { x: o.x + n.x * k * H / 5, y: o.y + n.y * k * H / 5 };
+    g += seg({ x: q.x - e.x * 500, y: q.y - e.y * 500 }, { x: q.x + e.x * 900, y: q.y + e.y * 900 }, 'grain');
+  }
+  return `<clipPath id="${id}"><polygon points="${d}"/></clipPath><polygon class="wood" points="${d}"/><g clip-path="url(#${id})">${g}</g><polygon class="woodb" points="${d}"/>`;
+}
+const UP = { x: 0, y: -1 };
+function boardFig(show) {
+  pid = 0; const dx = H / Math.tan(rad(a));
+  let s = piece([{ x: 30, y: Y1 }, JL, { x: JL.x + dx, y: Y0 }, { x: 30, y: Y0 }], JL, { x: -1, y: 0 }, UP);
+  s += piece([JR, { x: 770, y: Y1 }, { x: 770, y: Y0 }, { x: JR.x + dx, y: Y0 }], JR, { x: 1, y: 0 }, UP);
+  s += wedge(JR, 0, a, 50, 'c1') + wedge(JL, a, 180, 50, 'cr');
+  s += text({ x: JR.x + 80, y: Y1 + 36 }, a + '°', 'tx tc1') + text({ x: JL.x - 80, y: Y1 + 36 }, show ? (180 - a) + '°' : '?', 'tx tr');
+  return s + text({ x: 90, y: Y0 - 24 }, 'Reststück', 'tx') + text({ x: 720, y: Y0 - 24 }, 'Leiste', 'tx');
+}
+// Die zweite Leiste liegt getrennt daneben. Zusammenschieben geht erst, wenn die Schnittflächen parallel sind.
+function stossFig() {
+  pid = 0; const dxR = H / Math.tan(rad(a)), dxL = -H / Math.tan(rad(beta));
+  const gap = joined ? 0 : 56 + Math.max(0, dxL - dxR), JL2 = { x: J0.x - gap, y: Y1 };
+  let s = `<rect class="wall" x="0" y="${Y1 + 2}" width="800" height="22"/>`;
+  s += piece([{ x: -600, y: Y1 }, JL2, { x: JL2.x + dxL, y: Y0 }, { x: -600, y: Y0 }], JL2, { x: -1, y: 0 }, UP);
+  s += piece([J0, { x: 1400, y: Y1 }, { x: 1400, y: Y0 }, { x: J0.x + dxR, y: Y0 }], J0, { x: 1, y: 0 }, UP);
+  s += wedge(J0, 0, a, 50, 'c1') + wedge(JL2, 180 - beta, 180, 50, 'cr');
+  s += text({ x: J0.x + 80, y: Y0 - 34 }, a + '°', 'tx tc1') + text({ x: JL2.x - 80, y: Y0 - 34 }, beta + '°', 'tx tr');
+  return s + text({ x: 400, y: Y1 + 52 }, 'Wand', 'tx');
+}
+
+// ---------- Drehung, Gerade, Strahl ----------
+// Leerer Kreis mit drehbarem Radius. Die Gradzahl läuft beim Drehen mit.
+function fullFig() {
+  const r = 185, e = t - 8; let s = `<circle cx="${M.x}" cy="${M.y}" r="150" fill="none" stroke="var(--mut)" stroke-width="3"/>` + wedge(M, 0, t, 150, 'c1');
+  if (t >= 25) {
+    const p1 = pol(r, 8), p2 = pol(r, e), u = w => ({ x: Math.cos(rad(w)), y: -Math.sin(rad(w)) }), n = u(e), d = u(e + 90);
+    s += `<path d="M${f(p1.x)} ${f(p1.y)}A${r} ${r} 0 ${e - 8 > 180 ? 1 : 0} 0 ${f(p2.x)} ${f(p2.y)}" fill="none" stroke="var(--fg)" stroke-width="4" stroke-linecap="round"/>`
+      + `<polygon class="pt" points="${f(p2.x + d.x * 20)},${f(p2.y + d.y * 20)} ${f(p2.x + n.x * 11)},${f(p2.y + n.y * 11)} ${f(p2.x - n.x * 11)},${f(p2.y - n.y * 11)}"/>`;
+  }
+  s += seg(M, pol(150, 0)) + seg(M, pol(150, t)) + dot(M);
+  if (t > 0) s += text(t === 360 ? { x: M.x, y: M.y - 70 } : pol(t >= 50 ? 95 : 235, t / 2), t + '°');
+  return s;
+}
+function turnDrag(w) {
+  let n = Math.round(w);
+  if (t >= 270 && n < 90) n = 360; else if (t <= 90 && n > 270) n = 0;
+  for (const q of [90, 180, 270, 360]) if (Math.abs(n - q) <= 3) n = q;
+  t = n;
+}
+const lineFig = () => wedge(M, 0, 180, 150, 'c1', shown ? '180°' : '') + wedge(M, 180, 360, 150, 'c2', shown ? '180°' : '') + seg(pol(520, 0), pol(520, 180)) + dot(M);
+// ---------- Zwei Geraden ----------
+// o: names, vals, hi (hervorgehoben), only (nur diese beschriften), hidden (Wert verdeckt), color, fixed
+function draw(o) {
+  const hi = o.hi || [], span = { al: [0, a], be: [a, 180], ga: [180, 180 + a], de: [180 + a, 360] };
+  let s = '';
+  KEYS.forEach(k => {
+    const on = hi.includes(k), col = (k === 'al' || k === 'ga') ? 'c1' : 'c2';
+    let label = '';
+    if (o.names && (!o.only || o.only.includes(k))) label = !o.vals ? GR[k] : (o.hidden && o.hidden[k]) ? `${GR[k]} = ?` : `${GR[k]} = ${val(k)}°`;
+    const known = o.color && !(o.hidden && o.hidden[k]);
+    if (o.names || hi.length) s += wedge(M, span[k][0], span[k][1], on ? 140 : 72, on || known ? col : 'n', label);
+  });
+  s += seg(pol(520, 0), pol(520, 180)) + seg(pol(520, a), pol(520, a + 180));
+  return s;
+}
+const SP = [['al', 'ga'], ['be', 'de']], NP = [['al', 'be'], ['be', 'ga'], ['ga', 'de'], ['de', 'al']];
+const WL = ['α + β = 180°', 'γ + β = 180°', 'α + β = γ + β &nbsp;&nbsp;| − β', 'α = γ'];
+const why = n => ({
+  t: 'Warum sind Scheitelwinkel gleich groß?', drag: cross,
+  fig: () => draw({ names: 1, vals: 1, only: ['al', 'be', 'ga'], hi: [['al', 'be'], ['ga', 'be'], ['al', 'be', 'ga'], ['al', 'ga']][n - 1] }),
+  eq: () => WL.slice(0, n).map((l, i) => `<div class="${i < n - 1 ? 'dim' : ''}">${l}</div>`).join('')
+});
+
+// ---------- Aufgaben ----------
+function newQuiz() { let n; do n = rnd(25, 155); while (n === 90 || n === a); a = n; quiz = { given: KEYS[rnd(0, 3)], shown: {} }; }
+function quizFig() { const hidden = {}; KEYS.forEach(k => { hidden[k] = k !== quiz.given && !quiz.shown[k]; }); return draw({ names: 1, vals: 1, color: 1, hidden, fixed: 1 }); }
+function quizTap(w) { const k = w < a ? 'al' : w < 180 ? 'be' : w < 180 + a ? 'ga' : 'de'; if (k !== quiz.given) quiz.shown[k] = !quiz.shown[k]; }
+
+// Erste Aufgabe: Summe 178°. Danach wechselt es zwischen 178°, 180° und 182°.
+function newKn(first) { const old = kn; let u; do u = rnd(50, 130); while (old && old.u === u); kn = { u, k: first === true ? -2 : [-2, 0, 2][rnd(0, 2)], show: false }; }
+function knFig() {
+  const A = pol(360, 180), B = pol(360, -kn.k), C = pol(250, kn.u);
+  return wedge(M, kn.u, 180, 95, 'c2', (180 - kn.u) + '°') + wedge(M, -kn.k, kn.u, 95, 'c1', (kn.u + kn.k) + '°')
+    + seg(M, A) + seg(M, B) + seg(M, C) + dot(M) + dot(A) + dot(B) + text({ x: A.x + 8, y: A.y + 38 }, 'A') + text({ x: B.x - 8, y: B.y + 38 }, 'B');
+}
+
+// ---------- Ziehen ----------
+function cross(w) { let n = Math.round(w); if (n >= 180) n -= 180; a = clamp(n, 20, 160); }
+function cut(w) { if (w > 180) w = w > 270 ? 0 : 180; a = aw = clamp(Math.round(w / 5) * 5, 10, 170); }
+function stoss(w) { if (w > 180) w = w > 270 ? 0 : 180; setBeta(Math.round((180 - w) / 5) * 5); }
+function setBeta(b) { beta = clamp(b, 10, 170); joined = false; }
+// Die Leiste behält ihren Schnittwinkel, auch wenn zwischendurch an der Kreuzung gedreht wurde.
+const wood = () => { a = aw; };
+const cutTxt = () => `Der Schnitt hat ${a}°. Welchen Winkel hat das Reststück?`;
+
+// ---------- Ablauf ----------
+const STEPS = [
+  // Die Frage
+  { t: 'Eine Fußleiste wird schräg abgesägt', c: JR, enter: wood, drag: cut, fig: () => boardFig(false), txt: cutTxt },
+  // Vom Kreis zur Geraden
+  { t: () => t === 360 ? 'Ein voller Kreis hat 360°' : 'Ein voller Kreis', enter: () => { t = 0; }, drag: turnDrag, fig: fullFig },
+  { t: () => shown ? 'Die Hälfte davon sind 180°' : 'Eine Gerade teilt den Kreis in zwei Hälften', rv: 1, fig: lineFig, eq: () => shown ? '360° : 2 = 180°' : '' },
+  // Zweite Gerade: Nebenwinkel
+  { t: 'Zwei Geraden kreuzen sich', enter: wood, drag: cross, fig: () => draw({}) },
+  { t: 'Es entstehen vier Winkel', drag: cross, fig: () => draw({ names: 1 }) },
+  { t: 'Nebenwinkel', rv: 1, drag: cross, fig: () => draw({ names: 1, vals: 1, only: ['al', 'be'], hi: ['al', 'be'], hidden: shown ? {} : { be: true } }),
+    txt: () => shown ? 'Nebenwinkel liegen nebeneinander an einer Geraden. Zusammen ergeben sie 180°.' : '',
+    eq: () => shown ? `<div>α + β = 180° &nbsp;&nbsp;| − α</div><div>β = 180° − α</div><div>β = 180° − ${a}° = ${180 - a}°</div>` : '' },
+  { t: 'An der Kreuzung gibt es vier Paare von Nebenwinkeln', drag: cross, btns: [{ l: 'Anderes Paar', f: () => { pair++; } }],
+    fig: () => draw({ names: 1, vals: 1, hi: NP[pair % 4] }),
+    eq: () => { const p = NP[pair % 4]; return `${GR[p[0]]} + ${GR[p[1]]} = ${val(p[0])}° + ${val(p[1])}° = 180°`; } },
+  // Die Antwort
+  { t: 'Zurück zur Fußleiste', c: JR, enter: () => { wood(); rev = false; }, drag: cut, btns: [{ l: 'Auflösen', f: () => { rev = !rev; } }],
+    fig: () => boardFig(rev), txt: () => rev ? 'Schnittwinkel und Winkel am Reststück sind Nebenwinkel.' : cutTxt(), eq: () => rev ? `180° − ${a}° = ${180 - a}°` : '' },
+  // Scheitelwinkel
+  { t: 'Was fällt auf?', drag: cross, fig: () => draw({ names: 1, vals: 1 }) },
+  { t: 'Scheitelwinkel', drag: cross, btns: [{ l: 'Anderes Paar', f: () => { pair++; } }], txt: 'Scheitelwinkel liegen sich gegenüber. Sie sind gleich groß.',
+    fig: () => draw({ names: 1, vals: 1, hi: SP[pair % 2] }),
+    eq: () => { const p = SP[pair % 2]; return `${GR[p[0]]} = ${GR[p[1]]} = ${val(p[0])}°`; } },
+  why(1), why(2), why(3), why(4),
+  // Aufgaben
+  { t: 'Aufgabe: Ein Winkel reicht', enter: newQuiz, tap: quizTap, btns: [{ l: 'Neue Aufgabe', f: newQuiz }], fig: quizFig },
+  { t: 'Die nächste Leiste soll gerade anschließen', c: J0, enter: () => { wood(); const ok = 180 - a; setBeta(ok > 60 ? ok - 15 : ok + 15); }, drag: stoss,
+    btns: [{ l: '− 5°', f: () => setBeta(beta - 5) }, { l: '+ 5°', f: () => setBeta(beta + 5) },
+      { l: 'Zusammenfügen', f: () => { joined = true; }, dis: () => joined || a + beta !== 180 }],
+    fig: stossFig, txt: () => joined ? 'Zusammen 180°. Die Leisten liegen gerade an der Wand.' : a + beta === 180 ? 'Die Schnittflächen passen aufeinander.' : 'Die Schnittflächen passen nicht aufeinander.',
+    eq: () => `${a}° + ${beta}° = ${a + beta}°` },
+  { t: 'Aufgabe: Gerade oder Knick?', enter: () => newKn(true), btns: [{ l: 'Auflösen', f: () => { kn.show = !kn.show; } }, { l: 'Neue Aufgabe', f: newKn }],
+    fig: knFig, txt: 'Ist die Linie von A nach B gerade?',
+    eq: () => { if (!kn.show) return ''; const l = 180 - kn.u, r = kn.u + kn.k; return `${l}° + ${r}° = ${l + r}°. ` + (kn.k ? 'Knick!' : 'Gerade!'); } }
+];
+
+let shownStep = -1;
+function render() {
+  const st = STEPS[step];
+  $('title').textContent = typeof st.t === 'function' ? st.t() : st.t;
+  $('fig').innerHTML = st.fig();
+  $('txt').textContent = typeof st.txt === 'function' ? st.txt() : st.txt || '';
+  $('eq').innerHTML = st.eq ? st.eq() : '';
+  if (shownStep !== step) {
+    shownStep = step;
+    $('extras').innerHTML = (st.btns || []).map((b, i) => `<button data-b="${i}">${b.l}</button>`).join('');
+    $('cnt').textContent = `${step + 1} / ${STEPS.length}`;
+    $('prev').disabled = step === 0;
+  }
+  $('next').disabled = step === STEPS.length - 1 && !(st.rv && !shown);
+  const bs = $('extras').children || [];
+  for (let i = 0; i < bs.length; i++) bs[i].disabled = !!(st.btns[i].dis && st.btns[i].dis());
+}
+function go(d) {
+  const n = step + d; if (n < 0 || n >= STEPS.length) return;
+  step = n; pair = 0; shown = false;
+  if (STEPS[step].enter) STEPS[step].enter();
+  render();
+}
+$('prev').addEventListener('click', () => go(-1));
+// Bei Folien mit verdecktem Ergebnis deckt der erste Druck auf, der zweite geht weiter.
+const fwd = () => { const st = STEPS[step]; if (st.rv && !shown) { shown = true; render(); } else go(1); };
+$('next').addEventListener('click', fwd);
+$('extras').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  STEPS[step].btns[+b.dataset.b].f(); render();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); fwd(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+});
+
+const fig = $('fig'); let down = false;
+// Winkel des Zeigers um den Mittelpunkt c, auch wenn das Bild mit Rand eingepasst ist.
+function ang(e, c) {
+  const r = fig.getBoundingClientRect(), sc = Math.min(r.width / 800, r.height / 520);
+  const x = (e.clientX - r.left - (r.width - 800 * sc) / 2) / sc, y = (e.clientY - r.top - (r.height - 520 * sc) / 2) / sc;
+  return (Math.atan2(-(y - c.y), x - c.x) * 180 / Math.PI + 360) % 360;
+}
+fig.addEventListener('pointerdown', e => {
+  const st = STEPS[step], w = ang(e, st.c || M);
+  if (st.tap) { st.tap(w); return render(); }
+  if (!st.drag) return;
+  down = true; try { fig.setPointerCapture(e.pointerId); } catch (x) {}
+  st.drag(w); render(); e.preventDefault();
+});
+fig.addEventListener('pointermove', e => { const st = STEPS[step]; if (down && st.drag) { st.drag(ang(e, st.c || M)); render(); } });
+const up = () => { down = false; };
+fig.addEventListener('pointerup', up); fig.addEventListener('pointercancel', up);
+STEPS[0].enter(); render();
+</script>
+</body>
+</html>
