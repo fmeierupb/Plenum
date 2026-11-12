@@ -102,6 +102,13 @@ function inner(v, p, q, r, cls, label, tcls, cap) {
 }
 const angleAt = (v, p, q) => { const d = Math.abs(dirOf(v, p) - dirOf(v, q)); return d > 180 ? 360 - d : d; };
 const cm = px => (Math.round(px / 5) / 10).toFixed(1).replace('.', ',');
+// Beschriftung eines Innenwinkels außen an der Ecke v, damit sie auch bei spitzen Winkeln lesbar bleibt.
+function outLab(v, p, q, s, cls = 'tx') {
+  const a1 = dirOf(v, p), a2 = dirOf(v, q), d = ((a2 - a1) % 360 + 360) % 360;
+  const w = (d <= 180 ? a1 + d / 2 : a2 + (360 - d) / 2) + 180, ux = Math.cos(rad(w)), uy = Math.sin(rad(w)), hw = 8.5 * String(s).length;
+  const pt = pol(26 + hw * Math.abs(ux) + 16 * Math.abs(uy), w, v);
+  return text(P(clamp(pt.x, hw + 6, 794 - hw), clamp(pt.y, 18, 502)), s, cls);
+}
 
 const U = 50; // 1 cm
 const arc = (c, r, a1, a2, cls = 'zk') => { const p1 = pol(r, a1, c), p2 = pol(r, a2, c); return `<path class="${cls}" d="M${f(p1.x)} ${f(p1.y)}A${r} ${r} 0 0 0 ${f(p2.x)} ${f(p2.y)}"/>`; };
@@ -177,7 +184,7 @@ function cqFig() {
   const hiA = k === 1 ? [i] : k === 2 ? o : [], hiS = k === 0 ? [0, 1, 2] : k === 1 ? o : [i];
   const m = P((ps[0].x + ps[1].x + ps[2].x) / 3, (ps[0].y + ps[1].y + ps[2].y) / 3);
   let s = '';
-  hiA.forEach(j => { s += inner(ps[j], ps[(j + 1) % 3], ps[(j + 2) % 3], 58, 'c2', ang[j] + '°', 'tx', 140); });
+  hiA.forEach(j => { s += inner(ps[j], ps[(j + 1) % 3], ps[(j + 2) % 3], 58, 'c2') + outLab(ps[j], ps[(j + 1) % 3], ps[(j + 2) % 3], ang[j] + '°'); });
   [0, 1, 2].forEach(j => {
     const p = ps[(j + 1) % 3], q = ps[(j + 2) % 3], on = hiS.includes(j);
     s += seg(p, q, on ? 'gs' : 'ns');

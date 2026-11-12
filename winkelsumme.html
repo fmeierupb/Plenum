@@ -102,6 +102,13 @@ function inner(v, p, q, r, cls, label, tcls, cap) {
 }
 const angleAt = (v, p, q) => { const d = Math.abs(dirOf(v, p) - dirOf(v, q)); return d > 180 ? 360 - d : d; };
 const cm = px => (Math.round(px / 5) / 10).toFixed(1).replace('.', ',');
+// Beschriftung eines Innenwinkels außen an der Ecke v, damit sie auch bei spitzen Winkeln lesbar bleibt.
+function outLab(v, p, q, s, cls = 'tx') {
+  const a1 = dirOf(v, p), a2 = dirOf(v, q), d = ((a2 - a1) % 360 + 360) % 360;
+  const w = (d <= 180 ? a1 + d / 2 : a2 + (360 - d) / 2) + 180, ux = Math.cos(rad(w)), uy = Math.sin(rad(w)), hw = 8.5 * String(s).length;
+  const pt = pol(26 + hw * Math.abs(ux) + 16 * Math.abs(uy), w, v);
+  return text(P(clamp(pt.x, hw + 6, 794 - hw), clamp(pt.y, 18, 502)), s, cls);
+}
 
 const rows = arr => arr.map(l => `<div>${l}</div>`).join('');
 const GR = ['α', 'β', 'γ', 'δ'], CL = ['c1', 'c2', 'c3', 'cr'];
@@ -113,7 +120,7 @@ function roofFig(show) {
   const T = P(400, 300 - 250 * Math.tan(rad(n)));
   let s = `<rect class="house" x="190" y="300" width="420" height="180"/>` + poly([EL, ER, T], 'roof') + poly([EL, ER, T]);
   s += seg(P(190, 300), P(190, 480), 'thin') + seg(P(610, 300), P(610, 480), 'thin') + seg(P(120, 480), P(680, 480), 'thin');
-  s += wedge(EL, 0, n, 64, 'c1', n + '°') + wedge(ER, 180 - n, 180, 64, 'c2', n + '°');
+  s += wedge(EL, 0, n, 64, 'c1') + wedge(ER, 180 - n, 180, 64, 'c2') + text(P(EL.x - 52, EL.y - 2), n + '°') + text(P(ER.x + 52, ER.y - 2), n + '°');
   s += wedge(T, 180 + n, 360 - n, 56, 'c3', show ? (180 - 2 * n) + '°' : '?');
   return s + text(P(T.x, T.y - 28), 'First', 'ts');
 }
@@ -129,14 +136,11 @@ function triFig(o = {}) {
   const [ra, rb, rg] = tAng(), lab = (i, v) => o.vals ? `${GR[i]} = ${v}°` : GR[i];
   let s = '';
   if (o.par) s += xline(Cc, 0, 'da');
-  s += wedge(A, 0, dirOf(A, Cc), 62, 'c1', lab(0, ra), 'tx', 140);
-  s += wedge(B, dirOf(B, Cc), 180, 62, 'c2', lab(1, rb), 'tx', 140);
-  s += wedge(Cc, dirOf(Cc, A), dirOf(Cc, B), 62, 'c3', lab(2, rg), 'tx', 140);
+  s += wedge(A, 0, dirOf(A, Cc), 62, 'c1') + wedge(B, dirOf(B, Cc), 180, 62, 'c2') + wedge(Cc, dirOf(Cc, A), dirOf(Cc, B), 62, 'c3');
   if (o.cA) s += wedge(Cc, 180, dirOf(Cc, A), 62, 'c1', lab(0, ra), 'tx', 140);
   if (o.cB) s += wedge(Cc, dirOf(Cc, B), 360, 62, 'c2', lab(1, rb), 'tx', 140);
   s += poly([A, B, Cc]);
-  const m = P((A.x + B.x + Cc.x) / 3, (A.y + B.y + Cc.y) / 3);
-  return s + text(out(A, m), 'A') + text(out(B, m), 'B') + text(o.par ? P(Cc.x + 26, Cc.y - 30) : out(Cc, m), 'C');
+  return s + outLab(A, B, Cc, lab(0, ra)) + outLab(B, A, Cc, lab(1, rb)) + outLab(Cc, A, B, lab(2, rg));
 }
 function triDown(p) {
   grab = null; let best = 90;
@@ -144,9 +148,12 @@ function triDown(p) {
   return grab ? true : false;
 }
 function triDrag(w, p) {
-  if (grab === 'A') A.x = clamp(p.x, 40, B.x - 140);
-  else if (grab === 'B') B.x = clamp(p.x, A.x + 140, 760);
-  else if (grab === 'C') { Cc.x = clamp(p.x, 40, 760); Cc.y = clamp(p.y, 40, 320); }
+  // C bleibt zwischen A und B, damit die Winkel unten spitz bleiben und keiner zu klein wird.
+  const a0 = A.x, b0 = B.x, c0 = P(Cc.x, Cc.y);
+  if (grab === 'A') A.x = clamp(p.x, 40, Math.min(B.x - 140, Cc.x - 30));
+  else if (grab === 'B') B.x = clamp(p.x, Math.max(A.x + 140, Cc.x + 30), 760);
+  else if (grab === 'C') { Cc.x = clamp(p.x, A.x + 30, B.x - 30); Cc.y = clamp(p.y, 40, 320); }
+  if (Math.min(...tAng()) < 20) { A.x = a0; B.x = b0; Cc.x = c0.x; Cc.y = c0.y; }
 }
 
 // ---------- Viereck zum Ziehen ----------
@@ -166,10 +173,9 @@ function convexOk(ps) {
 function quadFig(o = {}) {
   const r = qAng(); let s = '';
   if (o.split) s += poly([Q[0], Q[1], Q[2]], 't1') + poly([Q[0], Q[2], Q[3]], 't2') + seg(Q[0], Q[2], 'da');
-  Q.forEach((v, i) => { s += inner(v, Q[(i + 3) % 4], Q[(i + 1) % 4], 58, CL[i], o.vals ? `${GR[i]} = ${r[i]}°` : GR[i], 'tx', 140); });
+  Q.forEach((v, i) => { s += inner(v, Q[(i + 3) % 4], Q[(i + 1) % 4], 58, CL[i]); });
   s += poly(Q);
-  const m = P(Q.reduce((t, p) => t + p.x, 0) / 4, Q.reduce((t, p) => t + p.y, 0) / 4);
-  Q.forEach((v, i) => { s += text(out(v, m), 'ABCD'[i]); });
+  Q.forEach((v, i) => { s += outLab(v, Q[(i + 3) % 4], Q[(i + 1) % 4], o.vals ? `${GR[i]} = ${r[i]}°` : GR[i]); });
   return s;
 }
 function quadDown(p) { qgrab = -1; let best = 90; Q.forEach((q, i) => { const d = dist(p, q); if (d < best) { best = d; qgrab = i; } }); return qgrab >= 0; }
@@ -216,8 +222,10 @@ function newQq() {
 }
 function taskFig(t) {
   const ps = t.ps, k = ps.length; let s = '';
-  ps.forEach((v, i) => { const hid = i === t.u && !t.show; s += inner(v, ps[(i + k - 1) % k], ps[(i + 1) % k], 58, hid ? 'n' : CL[i], `${GR[i]} = ${hid ? '?' : t.v[i] + '°'}`, 'tx', 140); });
-  return s + poly(ps);
+  ps.forEach((v, i) => { const hid = i === t.u && !t.show; s += inner(v, ps[(i + k - 1) % k], ps[(i + 1) % k], 58, hid ? 'n' : CL[i]); });
+  s += poly(ps);
+  ps.forEach((v, i) => { const hid = i === t.u && !t.show; s += outLab(v, ps[(i + k - 1) % k], ps[(i + 1) % k], `${GR[i]} = ${hid ? '?' : t.v[i] + '°'}`); });
+  return s;
 }
 function taskEq(t, sum) {
   if (!t.show) return '';
@@ -236,7 +244,7 @@ const STEPS = [
   { t: 'Was fällt auf?', rv: 1, ...TD, fig: () => triFig({ vals: 1 }),
     txt: () => shown ? 'Im Dreieck sind alle drei Winkel zusammen 180°.' : '',
     eq: () => { const [a, b, c] = tAng(); return shown ? `${a}° + ${b}° + ${c}° = 180°` : ''; } },
-  { t: 'Warum? Eine Parallele zu AB durch C', ...TD, fig: () => triFig({ vals: 1, par: 1 }) },
+  { t: 'Warum? Eine Parallele zur Grundseite durch die Spitze', ...TD, fig: () => triFig({ vals: 1, par: 1 }) },
   { t: 'α taucht oben wieder auf', ...TD, fig: () => triFig({ vals: 1, par: 1, cA: 1 }), txt: 'α und das obere α sind Wechselwinkel an den Parallelen.' },
   { t: 'β auch', ...TD, fig: () => triFig({ vals: 1, par: 1, cA: 1, cB: 1 }), txt: 'Auch β ist ein Wechselwinkel.' },
   { t: 'Oben liegen α, γ und β an einer Geraden', ...TD, fig: () => triFig({ vals: 1, par: 1, cA: 1, cB: 1 }),

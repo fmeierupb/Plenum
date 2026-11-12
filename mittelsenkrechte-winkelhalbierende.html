@@ -104,6 +104,13 @@ function inner(v, p, q, r, cls, label, tcls, cap) {
 }
 const angleAt = (v, p, q) => { const d = Math.abs(dirOf(v, p) - dirOf(v, q)); return d > 180 ? 360 - d : d; };
 const cm = px => (Math.round(px / 5) / 10).toFixed(1).replace('.', ',');
+// Beschriftung eines Innenwinkels außen an der Ecke v, damit sie auch bei spitzen Winkeln lesbar bleibt.
+function outLab(v, p, q, s, cls = 'tx') {
+  const a1 = dirOf(v, p), a2 = dirOf(v, q), d = ((a2 - a1) % 360 + 360) % 360;
+  const w = (d <= 180 ? a1 + d / 2 : a2 + (360 - d) / 2) + 180, ux = Math.cos(rad(w)), uy = Math.sin(rad(w)), hw = 8.5 * String(s).length;
+  const pt = pol(26 + hw * Math.abs(ux) + 16 * Math.abs(uy), w, v);
+  return text(P(clamp(pt.x, hw + 6, 794 - hw), clamp(pt.y, 18, 502)), s, cls);
+}
 
 const rows = arr => arr.map(l => `<div>${l}</div>`).join('');
 const km = px => (Math.round(px / 10) / 10).toFixed(1).replace('.', ',');
