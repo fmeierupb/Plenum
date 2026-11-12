@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<title>Dreiecke konstruieren</title>
+<style>
+:root{--bg:#fbfaf6;--fg:#161a22;--mut:#9aa0ad;--line:#d9d7cf;--c1:#2563eb;--c2:#f08a00;--c3:#12a150;--btn:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#f0f2f6;--mut:#7d8596;--line:#343b48;--c1:#5b9bff;--c2:#ffad33;--c3:#3ddc84;--btn:#1f242d}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;height:100dvh;padding:12px 16px calc(12px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none}
+h1{margin:0;font-size:clamp(26px,4.2vw,52px);line-height:1.15;min-height:1.2em}
+#fig{flex:1;min-height:0;width:100%;touch-action:none}
+#txt{font-size:clamp(18px,2.6vw,32px);min-height:1.4em;text-align:center}
+#eq{font-size:clamp(22px,3.6vw,44px);font-weight:700;min-height:1.4em;text-align:center;font-variant-numeric:tabular-nums;line-height:1.35}
+#eq .dim{opacity:.4;font-size:.8em}
+footer{display:flex;gap:10px;align-items:center;margin-top:10px}
+#extras{display:flex;gap:10px;margin:0 auto}
+button{font:inherit;font-size:clamp(16px,2vw,24px);color:inherit;background:var(--btn);border:1px solid var(--line);border-radius:12px;padding:12px 18px;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.3}
+#cnt{color:var(--mut);font-size:clamp(14px,1.6vw,20px);min-width:3.5em;text-align:center}
+#next{background:var(--c1);border-color:var(--c1);color:#fff;font-weight:700}
+svg .ln{stroke:var(--fg);stroke-width:5;stroke-linecap:round;fill:none}
+svg .thin{stroke:var(--fg);stroke-width:3;stroke-linecap:round;fill:none}
+svg .da{stroke:var(--mut);stroke-width:3;stroke-dasharray:12 9;fill:none}
+svg .hi{stroke:var(--c3);stroke-width:5;stroke-linecap:round;fill:none}
+svg .zk{stroke:var(--c2);stroke-width:3;stroke-dasharray:10 8;fill:none}
+svg .wd{stroke:none}
+svg .n{fill:var(--mut);opacity:.3}
+svg .c1{fill:var(--c1);opacity:.62}
+svg .c2{fill:var(--c2);opacity:.62}
+svg .c3{fill:var(--c3);opacity:.62}
+svg .cr{fill:#d81e1e;opacity:.62}
+svg .tx{fill:var(--fg);font:700 30px system-ui,sans-serif}
+svg .ts{fill:var(--mut);font:600 24px system-ui,sans-serif}
+svg .tr{fill:#d81e1e}
+svg .tc1{fill:var(--c1)}
+svg .tc3{fill:var(--c3)}
+svg .pt{fill:var(--fg)}
+svg .mk{fill:var(--c3)}
+svg .hd{fill:var(--c1);opacity:.28}
+svg .ip{fill:var(--c2)}
+svg .stick{stroke:#8a5a2b;stroke-width:14;stroke-linecap:round}
+svg .joint{fill:#20140a}
+svg .gs{stroke:var(--c1);stroke-width:9;stroke-linecap:round}
+svg .ns{stroke:var(--mut);stroke-width:3;stroke-dasharray:10 8}
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<svg id="fig" viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg"></svg>
+<div id="txt"></div>
+<div id="eq"></div>
+<footer>
+  <button id="prev">‹ Zurück</button><span id="cnt"></span>
+  <div id="extras"></div>
+  <button id="next">Weiter ›</button>
+</footer>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+const P = (x, y) => ({ x, y });
+const M = P(400, 260);
+// Winkel mathematisch: gegen den Uhrzeigersinn, 0° zeigt nach rechts.
+const pol = (r, w, c = M) => P(c.x + r * Math.cos(rad(w)), c.y - r * Math.sin(rad(w)));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const dirOf = (c, p) => (deg(Math.atan2(-(p.y - c.y), p.x - c.x)) + 360) % 360;
+const f = n => n.toFixed(1);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[rnd(0, a.length - 1)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const lines = (arr, n = arr.length) => arr.slice(0, n).map((l, i) => `<div class="${i < n - 1 ? 'dim' : ''}">${l}</div>`).join('');
+const text = (p, s, c = 'tx') => `<text class="${c}" x="${f(p.x)}" y="${f(p.y)}" text-anchor="middle" dominant-baseline="central">${s}</text>`;
+const seg = (p, q, c = 'ln') => `<line class="${c}" x1="${f(p.x)}" y1="${f(p.y)}" x2="${f(q.x)}" y2="${f(q.y)}"/>`;
+const dot = (p, r = 8, c = 'pt') => `<circle class="${c}" cx="${f(p.x)}" cy="${f(p.y)}" r="${r}"/>`;
+const circ = (m, r, c = 'thin') => `<circle class="${c}" cx="${f(m.x)}" cy="${f(m.y)}" r="${f(r)}"/>`;
+const handle = p => `<circle class="hd" cx="${f(p.x)}" cy="${f(p.y)}" r="22"/>` + dot(p, 8);
+const poly = (ps, c = 'ln') => `<polygon class="${c}" points="${ps.map(p => f(p.x) + ',' + f(p.y)).join(' ')}"/>`;
+// Gerade durch p mit Richtung w, über das Bild hinaus verlängert.
+const xline = (p, w, c = 'ln') => seg(pol(900, w, p), pol(900, w + 180, p), c);
+// Winkelfläche gegen den Uhrzeigersinn von a1 nach a2, Beschriftung außerhalb des Bogens.
+function wedge(c, a1, a2, r, cls, label, tcls = 'tx', cap = 250) {
+  let d = ((a2 - a1) % 360 + 360) % 360; if (d === 0 && a2 !== a1) d = 360; if (d <= 0) return '';
+  const p1 = pol(r, a1, c), p2 = pol(r, a1 + d, c);
+  let s = d >= 360 ? `<circle class="wd ${cls}" cx="${f(c.x)}" cy="${f(c.y)}" r="${r}"/>`
+    : `<path class="wd ${cls}" d="M${f(c.x)} ${f(c.y)}L${f(p1.x)} ${f(p1.y)}A${r} ${r} 0 ${d > 180 ? 1 : 0} 0 ${f(p2.x)} ${f(p2.y)}Z"/>`;
+  if (label) {
+    const half = String(label).length * 8.5 + 8;
+    const lr = Math.min(cap, Math.max(r + 40, half / Math.tan(rad(Math.min(d, 178) / 2))));
+    s += text(pol(lr, a1 + d / 2, c), label, tcls);
+  }
+  return s;
+}
+// Innenwinkel an Ecke v zwischen den Strahlen zu p und q (kleinerer Winkel).
+function inner(v, p, q, r, cls, label, tcls, cap) {
+  let a1 = dirOf(v, p), a2 = dirOf(v, q);
+  if (((a2 - a1) % 360 + 360) % 360 > 180) [a1, a2] = [a2, a1];
+  return wedge(v, a1, a2, r, cls, label, tcls, cap);
+}
+const angleAt = (v, p, q) => { const d = Math.abs(dirOf(v, p) - dirOf(v, q)); return d > 180 ? 360 - d : d; };
+const cm = px => (Math.round(px / 5) / 10).toFixed(1).replace('.', ',');
+
+const U = 50; // 1 cm
+const arc = (c, r, a1, a2, cls = 'zk') => { const p1 = pol(r, a1, c), p2 = pol(r, a2, c); return `<path class="${cls}" d="M${f(p1.x)} ${f(p1.y)}A${r} ${r} 0 0 0 ${f(p2.x)} ${f(p2.y)}"/>`; };
+const lab = (p, q, s, side = 1, d = 30) => { const w = dirOf(p, q) + 90 * side, m = P((p.x + q.x) / 2, (p.y + q.y) / 2); return text(pol(d, w, m), s); };
+
+// ---------- Gestelle aus Stäben ----------
+const A1 = P(90, 430), B1 = P(330, 430), A2 = P(470, 430), B2 = P(710, 430), C2 = P(590, 430 - 120 * Math.sqrt(3));
+let phi = 90, pulledTri = false;
+const sticks = (ps, closed = true) => { let s = ''; for (let i = 0; i < ps.length - (closed ? 0 : 1); i++) s += seg(ps[i], ps[(i + 1) % ps.length], 'stick'); return s + ps.map(p => dot(p, 9, 'joint')).join(''); };
+function frames(o = {}) {
+  const e = P(240 * Math.cos(rad(phi)), -240 * Math.sin(rad(phi))), D1 = P(A1.x + e.x, A1.y + e.y), C1 = P(B1.x + e.x, B1.y + e.y);
+  let s = seg(P(30, 446), P(770, 446), 'thin') + sticks([A1, B1, C1, D1]) + sticks([A2, B2, C2]);
+  if (o.lab) s += text(P(210, 490), phi === 90 ? '' : 'kippt weg') + text(P(590, 490), 'bleibt stabil');
+  return s;
+}
+function frameDrag(w, p) { if (p.x < 400) phi = clamp(Math.round(dirOf(A1, p)), 40, 140); else pulledTri = true; }
+
+// ---------- Konstruktionen ----------
+const A0 = P(250, 430), B0 = P(550, 430);
+const base = () => seg(A0, B0) + dot(A0) + dot(B0) + text(P(A0.x - 26, A0.y + 8), 'A') + text(P(B0.x + 26, B0.y + 8), 'B') + text(P(400, 470), 'c = 6 cm');
+const cMark = C => dot(C) + text(P(C.x, C.y - 30), 'C');
+// SSS: c = 6, b = 4, a = 5
+const SC = P(A0.x + 2.25 * U, A0.y - Math.sqrt(16 - 2.25 * 2.25) * U);
+const SSS = ['1. Seite c = 6 cm zeichnen', '2. Kreis um A mit b = 4 cm', '3. Kreis um B mit a = 5 cm', '4. Der Schnittpunkt ist C'];
+function sss(k) {
+  let s = '';
+  if (k >= 2) s += circ(A0, 4 * U, 'zk');
+  if (k >= 3) s += circ(B0, 5 * U, 'zk');
+  if (k >= 4) s += seg(A0, SC) + seg(B0, SC) + cMark(SC) + lab(A0, SC, 'b = 4 cm', 1, 62) + lab(SC, B0, 'a = 5 cm', 1, 66);
+  return s + base();
+}
+// SWS: c = 6, α = 50°, b = 4
+const WC = pol(4 * U, 50, A0);
+const SWS = ['1. Seite c = 6 cm zeichnen', '2. Winkel α = 50° in A antragen', '3. Auf dem Schenkel b = 4 cm abtragen', '4. C mit B verbinden'];
+function sws(k) {
+  let s = '';
+  if (k >= 2) s += wedge(A0, 0, 50, 62, 'c2', '50°') + seg(A0, pol(380, 50, A0), 'thin');
+  if (k >= 3) s += arc(A0, 4 * U, 38, 62) + cMark(WC) + lab(A0, WC, 'b = 4 cm', 1, 62);
+  if (k >= 4) s += seg(WC, B0) + seg(A0, WC);
+  return s + base();
+}
+// WSW: c = 6, α = 50°, β = 60°
+const WB = 6 * Math.sin(rad(60)) / Math.sin(rad(70)), VC = pol(WB * U, 50, A0);
+const WSW = ['1. Seite c = 6 cm zeichnen', '2. Winkel α = 50° in A antragen', '3. Winkel β = 60° in B antragen', '4. Die Schenkel schneiden sich in C'];
+function wsw(k) {
+  let s = '';
+  if (k >= 2) s += wedge(A0, 0, 50, 62, 'c2', '50°') + seg(A0, pol(430, 50, A0), 'thin');
+  if (k >= 3) s += wedge(B0, 120, 180, 62, 'c2', '60°') + seg(B0, pol(400, 120, B0), 'thin');
+  if (k >= 4) s += seg(A0, VC) + seg(B0, VC) + cMark(VC);
+  return s + base();
+}
+const con = (t, fn, L) => k => ({ t, fig: () => fn(k), eq: () => lines(L, k) });
+const sssS = con('SSS: drei Seiten', sss, SSS), swsS = con('SWS: zwei Seiten und der Winkel dazwischen', sws, SWS), wswS = con('WSW: eine Seite und die beiden Winkel daran', wsw, WSW);
+
+// ---------- Aufgabe ----------
+function fit(pts, x0, y0, x1, y1) {
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const a = Math.min(...xs), b = Math.max(...xs), c = Math.min(...ys), d = Math.max(...ys);
+  const sc = Math.min((x1 - x0) / (b - a), (y1 - y0) / (d - c));
+  const ox = (x0 + x1) / 2 - sc * (a + b) / 2, oy = (y0 + y1) / 2 - sc * (c + d) / 2;
+  return pts.map(p => P(ox + sc * p.x, oy + sc * p.y));
+}
+let cq = null;
+function newCq() {
+  const old = cq; let al, be, k, i;
+  do { al = rnd(8, 16) * 5; be = rnd(8, 16) * 5; k = rnd(0, 2); i = rnd(0, 2); } while (180 - al - be < 40 || (old && old.k === k && old.i === i));
+  const bb = Math.sin(rad(be)) / Math.sin(rad(180 - al - be));
+  const ps = fit([P(0, 0), P(1, 0), P(bb * Math.cos(rad(al)), -bb * Math.sin(rad(al)))], 160, 70, 640, 430);
+  cq = { k, i, ps, ang: [al, be, 180 - al - be], show: false };
+}
+function cqFig() {
+  const { k, i, ps, ang } = cq, o = [(i + 1) % 3, (i + 2) % 3];
+  const hiA = k === 1 ? [i] : k === 2 ? o : [], hiS = k === 0 ? [0, 1, 2] : k === 1 ? o : [i];
+  const m = P((ps[0].x + ps[1].x + ps[2].x) / 3, (ps[0].y + ps[1].y + ps[2].y) / 3);
+  let s = '';
+  hiA.forEach(j => { s += inner(ps[j], ps[(j + 1) % 3], ps[(j + 2) % 3], 58, 'c2', ang[j] + '°', 'tx', 140); });
+  [0, 1, 2].forEach(j => {
+    const p = ps[(j + 1) % 3], q = ps[(j + 2) % 3], on = hiS.includes(j);
+    s += seg(p, q, on ? 'gs' : 'ns');
+    if (on) { const mm = P((p.x + q.x) / 2, (p.y + q.y) / 2), l = dist(mm, m); s += text(P(mm.x + (mm.x - m.x) / l * 40, mm.y + (mm.y - m.y) / l * 40), (Math.round(dist(p, q) / 8) / 10).toFixed(1).replace('.', ',').replace(/,0$/, '') + ' cm'); }
+  });
+  return s;
+}
+const CQA = ['SSS: drei Seiten', 'SWS: zwei Seiten und der Winkel dazwischen', 'WSW: eine Seite und die beiden Winkel daran'];
+
+const STEPS = [
+  // Die Frage
+  { t: 'Warum baut man Brücken und Dächer aus Dreiecken?', enter: () => { phi = 90; pulledTri = false; }, drag: frameDrag, fig: () => frames({ lab: 1 }),
+    txt: () => phi !== 90 ? 'Das Viereck kippt weg, obwohl alle Stäbe gleich lang bleiben.' : pulledTri ? 'Das Dreieck bewegt sich nicht.' : 'Zieh an beiden Gestellen.' },
+  // SSS
+  sssS(1), sssS(2), sssS(3), sssS(4),
+  // Die Antwort
+  { t: 'Zurück zu den Gestellen', enter: () => { phi = 65; }, fig: () => frames({ lab: 1 }),
+    txt: 'Drei feste Seiten ergeben genau ein Dreieck. Darum kann es nicht kippen. Vier feste Seiten legen ein Viereck nicht fest.' },
+  // SWS und WSW
+  swsS(1), swsS(2), swsS(3), swsS(4),
+  wswS(1), wswS(2), wswS(3), wswS(4),
+  // Aufgabe
+  { t: 'Aufgabe: Welcher Satz passt?', enter: newCq, fig: cqFig, txt: 'Die farbigen Stücke sind gegeben.',
+    btns: [{ l: 'Auflösen', f: () => { cq.show = !cq.show; } }, { l: 'Neue Aufgabe', f: newCq }], eq: () => cq.show ? CQA[cq.k] : '' }
+];
+
+// ---------- Ablauf ----------
+let step = 0, pair = 0, shown = false, shownStep = -1;
+function render() {
+  const st = STEPS[step];
+  $('title').textContent = typeof st.t === 'function' ? st.t() : st.t;
+  $('fig').innerHTML = st.fig();
+  $('txt').textContent = typeof st.txt === 'function' ? st.txt() : st.txt || '';
+  $('eq').innerHTML = st.eq ? st.eq() : '';
+  if (shownStep !== step) {
+    shownStep = step;
+    $('extras').innerHTML = (st.btns || []).map((b, i) => `<button data-b="${i}">${b.l}</button>`).join('');
+    $('cnt').textContent = `${step + 1} / ${STEPS.length}`;
+    $('prev').disabled = step === 0;
+  }
+  $('next').disabled = step === STEPS.length - 1 && !(st.rv && !shown);
+  const bs = $('extras').children || [];
+  for (let i = 0; i < bs.length; i++) bs[i].disabled = !!(st.btns[i].dis && st.btns[i].dis());
+}
+function go(d) {
+  const n = step + d; if (n < 0 || n >= STEPS.length) return;
+  step = n; pair = 0; shown = false;
+  if (typeof onGo === 'function') onGo();
+  if (STEPS[step].enter) STEPS[step].enter();
+  render();
+}
+$('prev').addEventListener('click', () => go(-1));
+// Bei Folien mit verdecktem Ergebnis deckt der erste Druck auf, der zweite geht weiter.
+const fwd = () => { const st = STEPS[step]; if (st.rv && !shown) { shown = true; render(); } else go(1); };
+$('next').addEventListener('click', fwd);
+$('extras').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  STEPS[step].btns[+b.dataset.b].f(); render();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); fwd(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+});
+
+const fig = $('fig'); let down = false;
+// Zeigerposition in Bildkoordinaten, auch wenn das Bild mit Rand eingepasst ist.
+function svgPt(e) {
+  const r = fig.getBoundingClientRect(), sc = Math.min(r.width / 800, r.height / 520);
+  return P((e.clientX - r.left - (r.width - 800 * sc) / 2) / sc, (e.clientY - r.top - (r.height - 520 * sc) / 2) / sc);
+}
+const ctr = st => typeof st.c === 'function' ? st.c() : st.c || M;
+fig.addEventListener('pointerdown', e => {
+  const st = STEPS[step], p = svgPt(e), w = dirOf(ctr(st), p);
+  if (st.tap) { st.tap(w, p); return render(); }
+  if (!st.drag) return;
+  if (st.down && st.down(p) === false) return;
+  down = true; try { fig.setPointerCapture(e.pointerId); } catch (x) {}
+  st.drag(w, p); render(); e.preventDefault();
+});
+fig.addEventListener('pointermove', e => { const st = STEPS[step]; if (down && st.drag) { const p = svgPt(e); st.drag(dirOf(ctr(st), p), p); render(); } });
+const up = () => { if (down) { down = false; const st = STEPS[step]; if (st.up) { st.up(); render(); } } };
+fig.addEventListener('pointerup', up); fig.addEventListener('pointercancel', up);
+if (typeof onGo === 'function') onGo();
+if (STEPS[0].enter) STEPS[0].enter();
+render();
+</script>
+</body>
+</html>
