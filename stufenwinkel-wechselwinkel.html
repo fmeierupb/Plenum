@@ -309,7 +309,9 @@ render();
 (() => {
   const d = document, el = d.documentElement, b = d.getElementById('fs');
   if (!b) return;
-  if (!(d.fullscreenEnabled || d.webkitFullscreenEnabled)) { b.hidden = true; return; }
+  // Als App vom Home-Bildschirm gibt es keine Browserleisten. Vollbild brächte dort nur das X oben links.
+  const app = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  if (app || !(d.fullscreenEnabled || d.webkitFullscreenEnabled)) { b.hidden = true; return; }
   const on = () => !!(d.fullscreenElement || d.webkitFullscreenElement);
   const want = v => { try { if (v === undefined) return sessionStorage.getItem('fs') === '1'; sessionStorage.setItem('fs', v ? '1' : '0'); } catch (e) { return false; } };
   const call = (o, f) => { if (!f) return; try { const p = f.call(o); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
