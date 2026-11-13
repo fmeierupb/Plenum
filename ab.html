@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mathe 8">
+<meta name="theme-color" content="#0f766e">
+<title>Arbeitsblatt</title>
+<style>
+:root{--bg:#fbfaf6;--fg:#161a22;--line:#d9d7cf;--card:#fff;--c1:#2563eb;--mut:#7d8596}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#f0f2f6;--line:#343b48;--card:#1f242d;--c1:#5b9bff;--mut:#8b93a5}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;background:var(--bg);border-bottom:1px solid var(--line)}
+header a{border:1px solid var(--line);border-radius:12px;padding:10px 16px;color:inherit;text-decoration:none;font-weight:600;font-size:18px}
+#t{flex:1;font-weight:700;font-size:clamp(17px,2.2vw,24px)}
+img{display:block;width:100%;max-width:1000px;margin:12px auto;background:#fff;border-radius:6px}
+</style>
+</head>
+<body>
+<header><a href="./">‹ Menü</a><span id="t"></span><a id="pdf" download>PDF</a></header>
+<img id="img" alt="">
+<script>
+'use strict';
+const AB = {"ab-winkel-geradenkreuzungen": "Winkel an Geradenkreuzungen", "ab-stufenwinkel-wechselwinkel": "Stufenwinkel und Wechselwinkel", "ab-winkelsumme": "Winkelsumme im Dreieck und Viereck", "ab-mittelsenkrechte-winkelhalbierende": "Mittelsenkrechte und Winkelhalbierende", "ab-umkreis-inkreis": "Umkreis und Inkreis", "ab-dreiecke-konstruieren": "Dreiecke konstruieren: SSS, SWS, WSW"};
+const q = new URLSearchParams(location.search).get('n'), n = AB[q] ? q : Object.keys(AB)[0];
+document.getElementById('img').src = 'ab/' + n + '.png';
+document.getElementById('img').alt = AB[n];
+document.getElementById('pdf').href = 'ab/' + n + '.pdf';
+document.getElementById('t').textContent = AB[n];
+document.title = AB[n];
+// Offline: Nach dem ersten Aufruf liegen alle Stunden und Arbeitsblätter im Speicher.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
