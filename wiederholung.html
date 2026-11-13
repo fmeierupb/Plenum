@@ -59,10 +59,9 @@ svg .mk{fill:var(--c3)}
 svg .hd{fill:var(--c1);opacity:.28}
 svg .ip{fill:var(--c2)}
 svg .wood{fill:#b5833c;opacity:.55}
-svg .wall{fill:var(--mut);opacity:.35}
-svg .bk1{fill:var(--c1)}
-svg .bk2{fill:var(--c2)}
-svg .bk3{fill:var(--c3)}
+svg .rail{stroke:var(--fg);stroke-width:10;stroke-linecap:round}
+svg .rail1{stroke:var(--c1);stroke-width:10;stroke-linecap:round}
+svg .lab{fill:var(--bg);opacity:.9}
 svg .geo{fill:var(--c1);opacity:.07;stroke:none}
 svg .geoL{stroke:var(--c1);stroke-width:2;fill:none;opacity:.7}
 svg .tick{stroke:var(--c1);stroke-width:1.6;opacity:.8}
@@ -181,25 +180,21 @@ function geo(c, base, r, o = {}) {
   }
   return s;
 }
-// ---------- Regal: parallel und senkrecht ----------
-let dy = 30;
-const RL = P(250, 280);
-function shelfFig() {
-  const R = P(550, 280 + dy), t = deg(Math.atan2(dy, 300)), ang = Math.round(90 + t);
-  let s = `<rect class="wall" x="232" y="60" width="18" height="410"/><rect class="wall" x="550" y="60" width="18" height="410"/>`;
-  s += bar(P(250, 110), P(550, 110), 14, 'wood') + bar(P(250, 450), P(550, 450), 14, 'wood') + bar(RL, R, 14, 'wood');
-  // Bücher stehen auf dem mittleren Boden und rutschen zum tieferen Ende, wenn er schief ist.
-  const fr = dy > 0 ? [0.72, 0.8, 0.88] : dy < 0 ? [0.06, 0.14, 0.22] : [0.3, 0.38, 0.46];
-  fr.forEach((u, i) => {
-    const b = P(RL.x + u * (R.x - RL.x) + 11, RL.y + u * (R.y - RL.y) - 7);
-    s += `<rect class="bk${i + 1}" x="${f(b.x - 11)}" y="${f(b.y - 72)}" width="22" height="72" rx="3" transform="rotate(${f(t)} ${f(b.x)} ${f(b.y)})"/>`;
+// ---------- Bahngleis: parallel und senkrecht ----------
+// Gleis von oben: Schwellen aus Holz, darauf zwei Schienen. Normalspur 1435 mm.
+const R1 = 190, R2 = 330;
+function trackFig(show) {
+  let s = '';
+  for (let x = 60; x <= 740; x += 80) s += `<rect class="wood" x="${x - 13}" y="150" width="26" height="220" rx="3"/>`;
+  s += seg(P(30, R1), P(770, R1), show ? 'rail1' : 'rail') + seg(P(30, R2), P(770, R2), show ? 'rail1' : 'rail');
+  if (!show) return s;
+  s += seg(P(300, 150), P(300, 370), 'g2') + rmark(P(300, R1), 0, 24);
+  [[180, 'l'], [580, 'r']].forEach(([x]) => {
+    s += seg(P(x, R1 + 10), P(x, R2 - 10), 'da') + seg(P(x - 9, R1 + 10), P(x + 9, R1 + 10), 'thin') + seg(P(x - 9, R2 - 10), P(x + 9, R2 - 10), 'thin');
+    s += `<rect class="lab" x="${x + 10}" y="${(R1 + R2) / 2 - 18}" width="112" height="36" rx="6"/>` + text(P(x + 66, (R1 + R2) / 2), '1435 mm', 'tn');
   });
-  s += rmark(P(250, 117), 270, 22) + rmark(P(250, 443), 0, 22);
-  s += dy === 0 ? rmark(P(250, 273), 0, 22) : wedge(P(250, 273), -t, 90, 46, 'c2', ang + '°', 'tx', 120);
-  s += text(P(660, 110), 'Boden 1', 'tn') + text(P(670, 280 + dy), 'Boden 2', 'tn') + text(P(660, 450), 'Boden 3', 'tn') + text(P(130, 300), 'Seitenwand', 'tn');
   return s;
 }
-const shelfDrag = (w, p) => { const v = clamp(Math.round(p.y - 280), -70, 70); dy = Math.abs(v) < 8 ? 0 : v; };
 
 // ---------- Geraden erkennen ----------
 // a ∥ b, c senkrecht zu beiden. d und e sehen fast parallel aus, kommen sich aber nach rechts näher und schneiden sich weit außerhalb.
@@ -272,9 +267,9 @@ const ZT = ['', 'Zeichne einen Schenkel und markiere den Scheitelpunkt S.',
 
 // ---------- Folien ----------
 const STEPS = [
-  { t: 'Ein Regal', enter: () => { dy = 30; }, drag: shelfDrag, fig: shelfFig,
-    txt: () => dy === 0 ? 'Jetzt stimmt es: Die Böden sind parallel, und jeder Boden steht senkrecht auf der Seitenwand.' : 'Der mittlere Boden sitzt schief, die Bücher rutschen. Zieh ihn, bis er gerade ist.',
-    eq: () => dy === 0 ? 'Boden 1 ∥ Boden 2 &nbsp;&nbsp; Boden 2 ⊥ Seitenwand' : `Winkel an der Wand: ${Math.round(90 + deg(Math.atan2(dy, 300)))}° ≠ 90°` },
+  { t: 'Ein Bahngleis', rv: 1, fig: () => trackFig(shown),
+    txt: () => shown ? 'Die Schienen haben überall 1435 mm Abstand, sie sind parallel. Die Schwellen liegen senkrecht zu den Schienen.' : 'Ein Bahngleis von oben. Was fällt an den Schienen und Schwellen auf?',
+    eq: () => shown ? 'Schiene 1 ∥ Schiene 2 &nbsp;&nbsp; Schwelle ⊥ Schiene' : '' },
   { t: 'Parallel oder senkrecht?', rv: 1, fig: () => linesFig(shown),
     txt: () => shown ? 'Parallel heißt: überall gleicher Abstand. d und e kommen sich näher und schneiden sich weiter rechts. Sie sind nicht parallel.' : 'Welche Geraden sind zueinander parallel, welche senkrecht?',
     eq: () => shown ? 'a ∥ b &nbsp;&nbsp; c ⊥ a &nbsp;&nbsp; c ⊥ b &nbsp;&nbsp; d, e: nicht parallel' : '' },
