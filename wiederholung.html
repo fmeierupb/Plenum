@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mathe 8">
+<meta name="theme-color" content="#0f766e">
+<title>Wiederholung: Geraden, Winkel, Koordinaten, Maßstab</title>
+<style>
+:root{--bg:#fbfaf6;--fg:#161a22;--mut:#9aa0ad;--line:#d9d7cf;--c1:#2563eb;--c2:#f08a00;--c3:#12a150;--btn:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#f0f2f6;--mut:#7d8596;--line:#343b48;--c1:#5b9bff;--c2:#ffad33;--c3:#3ddc84;--btn:#1f242d}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;height:100dvh;padding:12px 16px calc(12px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none}
+h1{margin:0;font-size:clamp(26px,4.2vw,52px);line-height:1.15;min-height:1.2em}
+#fig{flex:1;min-height:0;width:100%;touch-action:none}
+#txt{font-size:clamp(18px,2.6vw,32px);min-height:1.4em;text-align:center}
+#eq{font-size:clamp(22px,3.6vw,44px);font-weight:700;min-height:1.4em;text-align:center;font-variant-numeric:tabular-nums;line-height:1.35}
+#eq .dim{opacity:.4;font-size:.8em}
+footer{display:flex;gap:10px;align-items:center;margin-top:10px}
+#extras{display:flex;gap:10px;margin:0 auto}
+button{font:inherit;font-size:clamp(16px,2vw,24px);color:inherit;background:var(--btn);border:1px solid var(--line);border-radius:12px;padding:12px 18px;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.3}
+#menu{font:inherit;font-size:clamp(16px,2vw,24px);color:inherit;background:var(--btn);border:1px solid var(--line);border-radius:12px;padding:12px 18px;text-decoration:none}
+#fs svg{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em}
+#fs .fo,html.fs #fs .fi{display:none}
+html.fs #fs .fo{display:inline}
+#cnt{color:var(--mut);font-size:clamp(14px,1.6vw,20px);min-width:3.5em;text-align:center}
+#next{background:var(--c1);border-color:var(--c1);color:#fff;font-weight:700}
+footer{flex-wrap:wrap;row-gap:8px}
+#extras{flex-wrap:wrap;justify-content:center}
+#extras:empty{display:none}
+/* Handy hochkant: Zusatzknöpfe in eine eigene Zeile, Zurück nur als Pfeil. Was trotzdem nicht passt, bricht um, statt aus dem Bild zu rutschen. */
+@media (max-width:700px){#extras{order:9;flex-basis:100%;margin:0}#next{margin-left:auto}footer{gap:8px}button,#menu{padding:10px 12px}#cnt{min-width:0}}
+@media (max-width:420px){#prev .lbl{display:none}}
+svg .ln{stroke:var(--fg);stroke-width:5;stroke-linecap:round;fill:none}
+svg .thin{stroke:var(--fg);stroke-width:3;stroke-linecap:round;fill:none}
+svg .da{stroke:var(--mut);stroke-width:3;stroke-dasharray:12 9;fill:none}
+svg .hi{stroke:var(--c3);stroke-width:5;stroke-linecap:round;fill:none}
+svg .zk{stroke:var(--c2);stroke-width:3;stroke-dasharray:10 8;fill:none}
+svg .wd{stroke:none}
+svg .n{fill:var(--mut);opacity:.3}
+svg .c1{fill:var(--c1);opacity:.62}
+svg .c2{fill:var(--c2);opacity:.62}
+svg .c3{fill:var(--c3);opacity:.62}
+svg .cr{fill:#d81e1e;opacity:.62}
+svg .tx{fill:var(--fg);font:700 30px system-ui,sans-serif}
+svg .ts{fill:var(--mut);font:600 24px system-ui,sans-serif}
+svg .tr{fill:#d81e1e}
+svg .tc1{fill:var(--c1)}
+svg .tc3{fill:var(--c3)}
+svg .pt{fill:var(--fg)}
+svg .mk{fill:var(--c3)}
+svg .hd{fill:var(--c1);opacity:.28}
+svg .ip{fill:var(--c2)}
+svg .wood{fill:#b5833c;opacity:.55}
+svg .wall{fill:var(--mut);opacity:.35}
+svg .bk1{fill:var(--c1)}
+svg .bk2{fill:var(--c2)}
+svg .bk3{fill:var(--c3)}
+svg .geo{fill:var(--c1);opacity:.07;stroke:none}
+svg .geoL{stroke:var(--c1);stroke-width:2;fill:none;opacity:.7}
+svg .tick{stroke:var(--c1);stroke-width:1.6;opacity:.8}
+svg .tk{fill:var(--c1);font:600 15px system-ui,sans-serif;opacity:.85}
+svg .tki{fill:var(--mut);font:600 13px system-ui,sans-serif}
+svg .tkb{fill:var(--c1);font:800 24px system-ui,sans-serif}
+svg .tkr{fill:#d81e1e;font:800 24px system-ui,sans-serif}
+svg .tm{fill:var(--fg);font:700 24px system-ui,sans-serif}
+svg .tn{fill:var(--fg);font:600 20px system-ui,sans-serif}
+svg .arc{stroke:var(--c1);stroke-width:4;fill:none}
+svg .grid{stroke:var(--line);stroke-width:1.5}
+svg .ax{stroke:var(--fg);stroke-width:3;fill:none}
+svg .axh{fill:var(--fg)}
+svg .g1{stroke:var(--c1);stroke-width:6;stroke-linecap:round;fill:none}
+svg .g2{stroke:var(--c2);stroke-width:6;stroke-linecap:round;fill:none}
+svg .g3{stroke:var(--c3);stroke-width:6;stroke-linecap:round;fill:none}
+svg .gr{stroke:#d81e1e;stroke-width:5;stroke-linecap:round;fill:none}
+svg .lap{fill:var(--mut);opacity:.25}
+svg .scr{fill:var(--c1);opacity:.12}
+svg .shape{fill:var(--c3);opacity:.15;stroke:var(--c3);stroke-width:4}
+svg .map{fill:var(--c3);opacity:.12}
+svg .road{stroke:var(--mut);stroke-width:14;stroke-linecap:round;opacity:.45;fill:none}
+svg .cell{fill:var(--bg);stroke:var(--line);stroke-width:2}
+svg .cellh{fill:var(--c1);opacity:.1;stroke:var(--line);stroke-width:2}
+#eq .red{color:#d81e1e}
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<svg id="fig" viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg"></svg>
+<div id="txt"></div>
+<div id="eq"></div>
+<footer>
+  <a id="menu" href="./">Menü</a><button id="fs" aria-label="Vollbild" title="Vollbild (F)"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="fi" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><path class="fo" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg></button><button id="prev" aria-label="Zurück">‹<span class="lbl"> Zurück</span></button><span id="cnt"></span>
+  <div id="extras"></div>
+  <button id="next">Weiter ›</button>
+</footer>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+const P = (x, y) => ({ x, y });
+const M = P(400, 260);
+// Winkel mathematisch: gegen den Uhrzeigersinn, 0° zeigt nach rechts.
+const pol = (r, w, c = M) => P(c.x + r * Math.cos(rad(w)), c.y - r * Math.sin(rad(w)));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const dirOf = (c, p) => (deg(Math.atan2(-(p.y - c.y), p.x - c.x)) + 360) % 360;
+const f = n => n.toFixed(1);
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[rnd(0, a.length - 1)];
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const lines = (arr, n = arr.length) => arr.slice(0, n).map((l, i) => `<div class="${i < n - 1 ? 'dim' : ''}">${l}</div>`).join('');
+const text = (p, s, c = 'tx') => `<text class="${c}" x="${f(p.x)}" y="${f(p.y)}" text-anchor="middle" dominant-baseline="central">${s}</text>`;
+const seg = (p, q, c = 'ln') => `<line class="${c}" x1="${f(p.x)}" y1="${f(p.y)}" x2="${f(q.x)}" y2="${f(q.y)}"/>`;
+const dot = (p, r = 8, c = 'pt') => `<circle class="${c}" cx="${f(p.x)}" cy="${f(p.y)}" r="${r}"/>`;
+const circ = (m, r, c = 'thin') => `<circle class="${c}" cx="${f(m.x)}" cy="${f(m.y)}" r="${f(r)}"/>`;
+const handle = p => `<circle class="hd" cx="${f(p.x)}" cy="${f(p.y)}" r="22"/>` + dot(p, 8);
+const poly = (ps, c = 'ln') => `<polygon class="${c}" points="${ps.map(p => f(p.x) + ',' + f(p.y)).join(' ')}"/>`;
+// Gerade durch p mit Richtung w, über das Bild hinaus verlängert.
+const xline = (p, w, c = 'ln') => seg(pol(900, w, p), pol(900, w + 180, p), c);
+// Winkelfläche gegen den Uhrzeigersinn von a1 nach a2, Beschriftung außerhalb des Bogens.
+function wedge(c, a1, a2, r, cls, label, tcls = 'tx', cap = 250) {
+  let d = ((a2 - a1) % 360 + 360) % 360; if (d === 0 && a2 !== a1) d = 360; if (d <= 0) return '';
+  const p1 = pol(r, a1, c), p2 = pol(r, a1 + d, c);
+  let s = d >= 360 ? `<circle class="wd ${cls}" cx="${f(c.x)}" cy="${f(c.y)}" r="${r}"/>`
+    : `<path class="wd ${cls}" d="M${f(c.x)} ${f(c.y)}L${f(p1.x)} ${f(p1.y)}A${r} ${r} 0 ${d > 180 ? 1 : 0} 0 ${f(p2.x)} ${f(p2.y)}Z"/>`;
+  if (label) {
+    const half = String(label).length * 8.5 + 8;
+    const lr = Math.min(cap, Math.max(r + 40, half / Math.tan(rad(Math.min(d, 178) / 2))));
+    s += text(pol(lr, a1 + d / 2, c), label, tcls);
+  }
+  return s;
+}
+// Innenwinkel an Ecke v zwischen den Strahlen zu p und q (kleinerer Winkel).
+function inner(v, p, q, r, cls, label, tcls, cap) {
+  let a1 = dirOf(v, p), a2 = dirOf(v, q);
+  if (((a2 - a1) % 360 + 360) % 360 > 180) [a1, a2] = [a2, a1];
+  return wedge(v, a1, a2, r, cls, label, tcls, cap);
+}
+const angleAt = (v, p, q) => { const d = Math.abs(dirOf(v, p) - dirOf(v, q)); return d > 180 ? 360 - d : d; };
+const cm = px => (Math.round(px / 5) / 10).toFixed(1).replace('.', ',');
+// Beschriftung eines Innenwinkels außen an der Ecke v, damit sie auch bei spitzen Winkeln lesbar bleibt.
+function outLab(v, p, q, s, cls = 'tx') {
+  const a1 = dirOf(v, p), a2 = dirOf(v, q), d = ((a2 - a1) % 360 + 360) % 360;
+  const w = (d <= 180 ? a1 + d / 2 : a2 + (360 - d) / 2) + 180, ux = Math.cos(rad(w)), uy = Math.sin(rad(w)), hw = 8.5 * String(s).length;
+  const pt = pol(26 + hw * Math.abs(ux) + 16 * Math.abs(uy), w, v);
+  return text(P(clamp(pt.x, hw + 6, 794 - hw), clamp(pt.y, 18, 502)), s, cls);
+}
+
+// ---------- Hilfen ----------
+const rows = arr => arr.map(l => `<div>${l}</div>`).join('');
+const ray = (v, w, len, c = 'ln') => seg(v, pol(len, w, v), c);
+// Winkelbogen als Linie, gegen den Uhrzeigersinn von a1 nach a2
+function arc(c, a1, a2, r, cls = 'arc') {
+  const d = ((a2 - a1) % 360 + 360) % 360, p1 = pol(r, a1, c), p2 = pol(r, a1 + d, c);
+  return `<path class="${cls}" d="M${f(p1.x)} ${f(p1.y)}A${r} ${r} 0 ${d > 180 ? 1 : 0} 0 ${f(p2.x)} ${f(p2.y)}"/>`;
+}
+// Zeichen für den rechten Winkel an v zwischen den Richtungen w und w + 90°
+function rmark(v, w, s = 24, c = 'thin') {
+  const a = pol(s, w, v), b = pol(s, w + 90, v), m = P(a.x + b.x - v.x, a.y + b.y - v.y);
+  return `<path class="${c}" d="M${f(a.x)} ${f(a.y)}L${f(m.x)} ${f(m.y)}L${f(b.x)} ${f(b.y)}"/>`;
+}
+// Balken von p nach q mit Dicke th, nach der Seite side (+1 links, −1 rechts der Richtung)
+function bar(p, q, th, cls, side = 0) {
+  const l = dist(p, q), nx = -(q.y - p.y) / l, ny = (q.x - p.x) / l;
+  const o1 = side ? 0 : -th / 2, o2 = side ? -side * th : th / 2;
+  const sh = (pt, o) => P(pt.x + nx * o, pt.y + ny * o);
+  return poly([sh(p, o1), sh(q, o1), sh(q, o2), sh(p, o2)], cls);
+}
+// Zahlen deutsch: Komma, Tausendergruppen ab 10 000
+function de(x) {
+  const s = (Math.round(x * 1000) / 1000).toString().split('.');
+  if (s[0].length > 4) s[0] = s[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return s.join(',');
+}
+// Geodreieck als Halbkreis: Mittelpunkt c, 0-Linie in Richtung base. Außen zählt die Skala ab base, innen von der Gegenseite.
+// o.at: Richtung (0 bis 180 ab base), an der beide Zahlen hervorgehoben werden. o.good: 'out' oder 'in' ist richtig.
+function geo(c, base, r, o = {}) {
+  const a = pol(r, base, c), b = pol(r, base + 180, c);
+  let s = `<path class="geo" d="M${f(a.x)} ${f(a.y)}A${r} ${r} 0 0 0 ${f(b.x)} ${f(b.y)}Z"/>` + arc(c, base, base + 180, r, 'geoL') + seg(a, b, 'geoL');
+  const every = r >= 200 ? 10 : 30;
+  for (let k = 0; k <= 180; k += 5) {
+    const w = base + k;
+    s += seg(pol(r, w, c), pol(r - (k % 10 ? 8 : 15), w, c), 'tick');
+    if (k % every === 0 && o.at !== k) s += text(pol(r - 30, w, c), k, 'tk') + text(pol(r - 54, w, c), 180 - k, 'tki');
+  }
+  s += seg(pol(26, base + 90, c), c, 'geoL') + circ(c, 5, 'geoL');
+  if (o.at !== undefined) {
+    const w = base + o.at;
+    s += text(pol(r - 30, w, c), o.at, o.good === 'in' ? 'tkr' : o.good ? 'tkb' : 'tm') + text(pol(r - 58, w, c), 180 - o.at, o.good === 'in' ? 'tkb' : o.good ? 'tkr' : 'tm');
+  }
+  return s;
+}
+function art(a) {
+  if (a < 90) return ['spitzer Winkel', `0° < ${a}° < 90°`];
+  if (a === 90) return ['rechter Winkel', '90°'];
+  if (a < 180) return ['stumpfer Winkel', `90° < ${a}° < 180°`];
+  if (a === 180) return ['gestreckter Winkel', '180°'];
+  if (a < 360) return ['überstumpfer Winkel', `180° < ${a}° < 360°`];
+  return ['Vollwinkel', '360°'];
+}
+
+// ---------- Regal: parallel und senkrecht ----------
+let dy = 30;
+const RL = P(250, 280);
+function shelfFig() {
+  const R = P(550, 280 + dy), t = deg(Math.atan2(dy, 300)), ang = Math.round(90 + t);
+  let s = `<rect class="wall" x="232" y="60" width="18" height="410"/><rect class="wall" x="550" y="60" width="18" height="410"/>`;
+  s += bar(P(250, 110), P(550, 110), 14, 'wood') + bar(P(250, 450), P(550, 450), 14, 'wood') + bar(RL, R, 14, 'wood');
+  // Bücher stehen auf dem mittleren Boden und rutschen zum tieferen Ende, wenn er schief ist.
+  const fr = dy > 0 ? [0.72, 0.8, 0.88] : dy < 0 ? [0.06, 0.14, 0.22] : [0.3, 0.38, 0.46];
+  fr.forEach((u, i) => {
+    const b = P(RL.x + u * (R.x - RL.x) + 11, RL.y + u * (R.y - RL.y) - 7);
+    s += `<rect class="bk${i + 1}" x="${f(b.x - 11)}" y="${f(b.y - 72)}" width="22" height="72" rx="3" transform="rotate(${f(t)} ${f(b.x)} ${f(b.y)})"/>`;
+  });
+  s += rmark(P(250, 117), 270, 22) + rmark(P(250, 443), 0, 22);
+  s += dy === 0 ? rmark(P(250, 273), 0, 22) : wedge(P(250, 273), -t, 90, 46, 'c2', ang + '°', 'tx', 120);
+  s += text(P(660, 110), 'Boden 1', 'tn') + text(P(670, 280 + dy), 'Boden 2', 'tn') + text(P(660, 450), 'Boden 3', 'tn') + text(P(130, 300), 'Seitenwand', 'tn');
+  return s;
+}
+const shelfDrag = (w, p) => { const v = clamp(Math.round(p.y - 280), -70, 70); dy = Math.abs(v) < 8 ? 0 : v; };
+
+// ---------- Geraden erkennen ----------
+const GL = [
+  { n: 'a', c: P(235, 160), w: 330, h: 175 }, { n: 'd', c: P(470, 240), w: 330, h: 175 },
+  { n: 'e', c: P(600, 310), w: 60, h: 150 }, { n: 'b', c: P(130, 360), w: 90, h: 120 }, { n: 'c', c: P(400, 450), w: 0, h: 330 }];
+function linesFig(show) {
+  const col = { a: 'g1', d: 'g1', b: 'g2', c: 'g2', e: 'g3' };
+  let s = '';
+  GL.forEach(g => { s += seg(pol(g.h, g.w + 180, g.c), pol(g.h, g.w, g.c), show ? col[g.n] : 'ln'); });
+  GL.forEach(g => { const e = pol(g.h + 26, g.w, g.c); s += text(e, g.n, 'tx'); });
+  if (show) {
+    // e ⊥ d am Schnittpunkt, b ⊥ c am Schnittpunkt
+    const d = GL[1], e = GL[2], u = P(Math.cos(rad(330)), -Math.sin(rad(330))), v = P(Math.cos(rad(60)), -Math.sin(rad(60)));
+    const det = u.x * v.y - u.y * v.x, dx = e.c.x - d.c.x, dy2 = e.c.y - d.c.y, t = (dx * v.y - dy2 * v.x) / det;
+    s += rmark(P(d.c.x + t * u.x, d.c.y + t * u.y), 330, 22, 'thin') + rmark(P(130, 450), 0, 22, 'thin');
+  }
+  return s;
+}
+
+// ---------- Laptop: Fachbegriffe ----------
+let lw = 110;
+const LS = P(300, 390);
+function laptopFig(show) {
+  const K = pol(340, 0, LS), T = pol(280, lw, LS);
+  let s = bar(LS, K, 22, 'lap', -1) + bar(LS, T, 18, 'lap', 1) + bar(pol(14, lw, LS), pol(266, lw, LS), 12, 'scr', -1);
+  s += wedge(LS, 0, lw, 70, 'c1') + seg(LS, K) + seg(LS, T);
+  if (!show) return s + text(pol(42, lw / 2, LS), 'α', 'tx');
+  s += arc(LS, 0, lw, 70) + dot(LS, 9) + text(pol(42, lw / 2, LS), 'α', 'tx');
+  s += text(P(LS.x - 10, LS.y + 52), 'Scheitelpunkt S', 'tm');
+  s += text(P(LS.x + 250, LS.y + 52), 'Schenkel', 'tm') + text(pol(80, lw + 90, pol(190, lw, LS)), 'Schenkel', 'tm');
+  s += text(pol(118, lw / 2, LS), 'Winkelbogen', 'tm');
+  return s;
+}
+const laptopDrag = w => { lw = clamp(Math.round(w), 40, 170); };
+
+// ---------- Uhr: Winkelarten ----------
+let mins = 10;
+const CK = P(400, 255), CR = 200;
+function clockFig() {
+  let s = circ(CK, CR, 'thin');
+  for (let h = 1; h <= 12; h++) s += seg(pol(CR, 90 - 30 * h, CK), pol(CR - 16, 90 - 30 * h, CK), 'thin') + text(pol(CR - 40, 90 - 30 * h, CK), h, 'tn');
+  if (mins > 0) s += wedge(CK, 90 - 6 * mins, 90, 150, mins === 60 ? 'c1' : 'c1');
+  s += seg(CK, pol(CR - 60, 90, CK), 'da') + seg(CK, pol(CR - 24, 90 - 6 * mins, CK), 'ln') + dot(CK, 9);
+  return s;
+}
+function clockDrag(w) {
+  const raw = Math.round(((90 - w) % 360 + 360) % 360 / 6) % 60;
+  // Über die 12 hinweg springt der Zeiger nicht von 59 auf 0 oder umgekehrt.
+  if (mins >= 45 && raw <= 15) mins = 60;
+  else if (mins <= 15 && raw >= 45) mins = 0;
+  else mins = raw;
+}
+
+// ---------- Übersicht Winkelarten ----------
+const KINDS = [[50, '0° < α < 90°', 'spitz'], [90, 'α = 90°', 'recht'], [130, '90° < α < 180°', 'stumpf'],
+  [180, 'α = 180°', 'gestreckt'], [250, '180° < α < 360°', 'überstumpf'], [360, 'α = 360°', 'voll']];
+function kindsFig(show) {
+  let s = '';
+  KINDS.forEach(([a, r, n], i) => {
+    const cx = 140 + (i % 3) * 260, cy = i < 3 ? 150 : 370, V = P(cx - (a >= 180 ? 0 : 40), cy);
+    s += (a === 90 ? rmark(V, 0, 30, 'thin') : wedge(V, 0, a, 40, 'c1')) + ray(V, 0, 90, 'thin') + ray(V, a, a > 180 ? 70 : 90, 'thin') + dot(V, 5);
+    s += text(P(cx, cy + (a > 180 ? 100 : 50)), r, 'tn');
+    if (show) s += text(P(cx, cy - 100), n === 'recht' ? 'rechter Winkel' : n === 'voll' ? 'Vollwinkel' : n, 'tm');
+  });
+  return s;
+}
+
+// ---------- Aufgabe Winkelart ----------
+let kq = null;
+function newKq() {
+  const old = kq ? kq.a : -1; let a;
+  do {
+    const t = pick([0, 0, 0, 1, 2, 2, 2, 3, 4, 4, 4, 5]);
+    a = [rnd(3, 16) * 5, 90, rnd(20, 34) * 5, 180, rnd(38, 70) * 5, 360][t];
+  } while (a === old);
+  kq = { a, b: pick([0, 15, 30, 160, 200, 330]), show: false };
+}
+function kqFig() {
+  const V = P(400, 285);
+  return (kq.a === 360 ? wedge(V, 0, 360, 70, 'c1') + text(P(V.x, V.y + 120), `α = ${kq.a}°`) : wedge(V, kq.b, kq.b + kq.a, 70, 'c1', `α = ${kq.a}°`, 'tx', 170)) + (kq.a === 90 ? rmark(V, kq.b, 30) : '') + ray(V, kq.b, 220) + ray(V, kq.b + kq.a, 220) + dot(V, 7);
+}
+
+// ---------- Leiter: Winkel messen ----------
+let th = 58;
+const WX = 600, GY0 = 440, LL = 380;
+function ladderFig(show) {
+  const F = P(WX - LL * Math.cos(rad(th)), GY0), T = P(WX, GY0 - LL * Math.sin(rad(th)));
+  let s = `<rect class="wall" x="${WX}" y="40" width="40" height="${GY0 - 40}"/>` + seg(P(60, GY0), P(740, GY0), 'ln');
+  const nx = Math.sin(rad(th)) * 12, ny = Math.cos(rad(th)) * 12;
+  s += seg(P(F.x - nx, F.y - ny), P(T.x - nx, T.y - ny), 'thin') + seg(P(F.x + nx, F.y + ny), P(T.x + nx, T.y + ny), 'thin');
+  for (let k = 40; k < LL; k += 38) { const q = pol(k, th, F); s += seg(P(q.x - nx, q.y - ny), P(q.x + nx, q.y + ny), 'thin'); }
+  if (show) s += geo(F, 0, 210) + text(pol(240, th - 9, F), th + '°', 'tkb');
+  s += wedge(F, 0, th, 58, 'c1') + text(pol(36, th / 2, F), 'α', 'tx');
+  return s;
+}
+const ladderDrag = (w, p) => { th = clamp(Math.round(deg(Math.asin(clamp((GY0 - p.y) / LL, 0, 1)))), 45, 85); };
+function ladderTxt() {
+  if (!shown) return 'Eine Sprossenleiter steht sicher, wenn sie mit dem Boden einen Winkel von 65° bis 75° bildet. Steht diese Leiter sicher?';
+  if (th < 65) return 'Zu flach: Unten kann die Leiter wegrutschen. Zieh die Leiter oben an der Wand.';
+  if (th > 75) return 'Zu steil: Die Leiter kann nach hinten kippen. Zieh die Leiter oben an der Wand.';
+  return 'Zwischen 65° und 75°: Die Leiter steht sicher.';
+}
+
+// ---------- Geodreieck ablesen ----------
+let mq = null;
+function newMq() {
+  const old = mq ? mq.a : -1; let a;
+  do a = pick([20, 30, 40, 50, 60, 70, 110, 120, 130, 140, 150, 160]); while (a === old);
+  mq = { a, left: Math.random() < 0.5 };
+}
+function mqFig(show) {
+  const V = P(400, 420), w2 = mq.left ? 180 - mq.a : mq.a, k = w2;
+  let s = geo(V, 0, 250, show ? { at: k, good: mq.left ? 'in' : 'out' } : { at: k });
+  s += ray(V, mq.left ? 180 : 0, 300) + ray(V, w2, 120) + seg(pol(120, w2, V), pol(285, w2, V), 'da') + dot(V, 7);
+  s += wedge(V, mq.left ? w2 : 0, mq.left ? 180 : w2, 56, 'c1');
+  return s;
+}
+
+// ---------- Überstumpfe Winkel ----------
+let rq = { a: 250, b: 20 };
+const newRq = () => { let a; do a = rnd(38, 68) * 5; while (a === rq.a); rq = { a, b: pick([0, 10, 20, 180, 200]) }; };
+function reflexFig(show, draw) {
+  const V = P(400, 270), b = rq.b, e = b + rq.a, rest = 360 - rq.a;
+  let s = '';
+  const la = (t, c) => text(pol(160, b + rq.a / 2, V), t, c);
+  if (show) s += wedge(V, b, e, 90, draw ? 'c1' : 'cr') + la(`α = ${rq.a}°`, draw ? 'tx' : 'tx tr') + wedge(V, e, b + 360, 60, draw ? 'cr' : 'c1', `β = ${rest}°`, draw ? 'tx tr' : 'tx', 140);
+  else if (!draw) s += wedge(V, b, e, 90, 'n') + la('α = ?', 'tx');
+  s += ray(V, b, 230);
+  if (show || !draw) s += ray(V, e, 230);
+  return s + dot(V, 7);
+}
+const reflexEq = draw => shown ? rows(draw
+  ? ['α + β = 360° &nbsp;&nbsp;| − α', 'β = 360° − α', `β = 360° − ${rq.a}° = <span class="red">${360 - rq.a}°</span>`]
+  : ['α + β = 360° &nbsp;&nbsp;| − β', 'α = 360° − β', `α = 360° − ${360 - rq.a}° = <span class="red">${rq.a}°</span>`]) : '';
+
+// ---------- Winkel zeichnen ----------
+let zw = 40, zs = 1;
+const ZV = P(400, 430);
+function drawFig() {
+  let s = ray(ZV, 0, 330) + dot(ZV, 7) + text(P(ZV.x - 4, ZV.y + 30), 'S', 'tx');
+  if (zs === 2 || zs === 3) s += geo(ZV, 0, 250, zs === 3 ? { at: zw, good: 'out' } : {});
+  if (zs === 3) s += dot(pol(262, zw, ZV), 8, 'mk');
+  if (zs >= 4) s += ray(ZV, zw, 330) + dot(pol(262, zw, ZV), 6, 'mk');
+  if (zs === 5) s += wedge(ZV, 0, zw, 60, 'c1', `α = ${zw}°`, 'tx', 160) + arc(ZV, 0, zw, 60);
+  return s;
+}
+const ZT = ['', 'Zeichne einen Schenkel und markiere den Scheitelpunkt S.',
+  'Leg das Geodreieck an: Nullpunkt auf S, 0-Linie auf den Schenkel.',
+  'Markiere einen Punkt bei der Zahl. Lies auf der Skala, die am Schenkel bei 0° beginnt.',
+  'Nimm das Geodreieck weg und verbinde S mit dem Punkt.',
+  'Zeichne den Winkelbogen und beschrifte den Winkel.'];
+
+// ---------- Koordinatensystem ----------
+const O = P(250, 470), U = 52;
+const cp = (x, y) => P(O.x + x * U, O.y - y * U);
+function axes() {
+  let s = '';
+  for (let i = 0; i <= 7; i++) s += seg(cp(i, 0), cp(i, 7.4), 'grid') + seg(cp(0, i), cp(7.4, i), 'grid');
+  s += seg(cp(0, 0), cp(7.7, 0), 'ax') + seg(cp(0, 0), cp(0, 7.7), 'ax');
+  s += poly([cp(7.95, 0), P(cp(7.7, 0).x, O.y - 8), P(cp(7.7, 0).x, O.y + 8)], 'axh') + poly([cp(0, 7.95), P(O.x - 8, cp(0, 7.7).y), P(O.x + 8, cp(0, 7.7).y)], 'axh');
+  for (let i = 1; i <= 7; i++) s += text(P(cp(i, 0).x, O.y + 22), i, 'tn') + text(P(O.x - 20, cp(0, i).y), i, 'tn');
+  s += text(P(O.x - 18, O.y + 20), '0', 'tn') + text(P(cp(7.95, 0).x + 4, O.y + 26), 'x', 'tx') + text(P(O.x - 26, cp(0, 7.95).y), 'y', 'tx');
+  return s;
+}
+const snap = p => { const x = Math.round((p.x - O.x) / U), y = Math.round((O.y - p.y) / U); return x >= 0 && x <= 7 && y >= 0 && y <= 7 && dist(p, cp(x, y)) < U * 0.7 ? [x, y] : null; };
+const walk = (x, y, n, cls1 = 'g1', cls2 = 'g3') => (x ? seg(cp(0, 0), cp(x, 0), cls1) : '') + (y ? seg(cp(x, 0), cp(x, y), cls2) : '') + dot(cp(x, y), 9) + text(P(cp(x, y).x + (x > 5 ? -62 : 62), cp(x, y).y - 22), `${n}(${x}|${y})`, 'tm');
+let cpt = [3, 2];
+// Figuren zum Eintragen, eigene Punkte
+const SHAPES = [
+  { n: 'ein Haus', p: [[1, 1], [5, 1], [5, 4], [3, 6], [1, 4]] },
+  { n: 'ein Drachen', p: [[3, 0], [6, 3], [3, 7], [0, 3]] },
+  { n: 'ein Pfeil', p: [[1, 3], [4, 3], [4, 1], [7, 4], [4, 7], [4, 5], [1, 5]] }];
+let sh = 0, placed = 0, miss = null;
+const NM = 'ABCDEFG';
+function shapeFig() {
+  const ps = SHAPES[sh].p; let s = axes();
+  if (placed === ps.length) s += poly(ps.map(q => cp(q[0], q[1])), 'shape');
+  else for (let i = 1; i < placed; i++) s += seg(cp(...ps[i - 1]), cp(...ps[i]), 'g3');
+  for (let i = 0; i < placed; i++) s += dot(cp(...ps[i]), 8) + text(P(cp(...ps[i]).x - 18, cp(...ps[i]).y - 18), NM[i], 'tm');
+  if (miss) { const m = cp(...miss); s += seg(P(m.x - 12, m.y - 12), P(m.x + 12, m.y + 12), 'gr') + seg(P(m.x - 12, m.y + 12), P(m.x + 12, m.y - 12), 'gr'); }
+  return s;
+}
+function shapeTap(w, p) {
+  const ps = SHAPES[sh].p, q = snap(p);
+  if (placed === ps.length || !q) return;
+  const [x, y] = ps[placed];
+  if (q[0] === x && q[1] === y) { placed++; miss = null; } else miss = q;
+}
+function shapeTxt() {
+  const ps = SHAPES[sh].p;
+  if (placed === ps.length) return `Fertig: ${SHAPES[sh].n}.`;
+  if (!miss) return `Tipp den Punkt ${NM[placed]} an. Die Punkte werden der Reihe nach verbunden.`;
+  const [x, y] = ps[placed];
+  return miss[0] === y && miss[1] === x ? 'x und y vertauscht. Erst nach rechts, dann nach oben.' : `Nicht ganz. ${NM[placed]} liegt ${x} nach rechts und ${y} nach oben.`;
+}
+const shapeEq = () => `<span style="font-size:.62em">${SHAPES[sh].p.map((q, i) => `<span style="${i === placed ? 'color:var(--c1)' : i < placed ? 'opacity:.45' : ''}">${NM[i]}(${q[0]}|${q[1]})</span>`).join(' &nbsp; ')}</span>`;
+
+// ---------- Maßstab: Karte ----------
+let md = 4;
+const MS = P(120, 250), PX = 42;
+function mapFig() {
+  const F = P(MS.x + md * PX, MS.y);
+  let s = `<rect class="map" x="40" y="70" width="720" height="300" rx="18"/>` + seg(P(60, MS.y), P(740, MS.y), 'road');
+  s += dot(MS, 12, 'pt') + text(P(MS.x, MS.y - 40), 'Schule', 'tm') + handle(F) + text(P(F.x, F.y - 40), 'Freibad', 'tm');
+  // Lineal unter der Straße, 1 cm auf der Karte = PX Bildpunkte
+  s += `<rect class="cell" x="${MS.x - 18}" y="298" width="${14 * PX + 36}" height="62" rx="6"/>`;
+  for (let k = 0; k <= 28; k++) {
+    const x = MS.x + k * PX / 2;
+    s += seg(P(x, 298), P(x, 298 + (k % 2 ? 10 : 18)), 'thin');
+    if (k % 2 === 0) s += text(P(x, 340), k / 2, 'tn');
+  }
+  s += seg(P(MS.x, 288), P(F.x, 288), 'g1') + text(P(MS.x + md * PX / 2, 410), `Karte: ${de(md)} cm`, 'tm');
+  return s + text(P(620, 110), 'Maßstab 1 : 25 000', 'tm');
+}
+const mapDrag = (w, p) => { md = clamp(Math.round((p.x - MS.x) / PX * 2) / 2, 1, 14); };
+function mapEq() {
+  if (!shown) return '';
+  const cmv = md * 25000, m = cmv / 100;
+  return rows([`${de(md)} cm · 25 000 = ${de(cmv)} cm`, `${de(cmv)} cm = ${de(m)} m${m >= 1000 ? ' = ' + de(m / 1000) + ' km' : ''}`]);
+}
+
+// ---------- Maßstab: Aufgaben ----------
+const PLANS = [[50, 'Möbelplan'], [100, 'Grundriss einer Wohnung'], [200, 'Bauplan eines Hauses'], [1000, 'Lageplan der Schule'], [25000, 'Wanderkarte']];
+let sq = null;
+function newSq() {
+  const old = sq; let q;
+  do {
+    const [k, n] = pick(PLANS), toReal = Math.random() < 0.5;
+    const z = k >= 25000 ? rnd(2, 16) / 2 : k >= 1000 ? rnd(3, 18) : rnd(4, 30) / 2;   // Zeichnung in cm
+    q = { k, n, toReal, z, show: false };
+  } while (old && old.k === q.k && old.z === q.z);
+  sq = q;
+}
+// Wirklichkeit in der passenden Einheit
+function realUnit(cmv) { return cmv >= 100000 ? [cmv / 100000, 'km'] : cmv >= 100 ? [cmv / 100, 'm'] : [cmv, 'cm']; }
+function sqFig() {
+  const [rv, ru] = realUnit(sq.z * sq.k), unk = sq.show ? null : sq.toReal ? 2 : 1;
+  const cols = [[60, 220, 'Maßstab', `1 : ${de(sq.k)}`], [280, 240, 'Zeichnung', `${de(sq.z)} cm`], [520, 240, 'Wirklichkeit', `${de(rv)} ${ru}`]];
+  let s = text(P(400, 120), sq.n, 'tm');
+  cols.forEach(([x, w, h, v], i) => {
+    s += `<rect class="cellh" x="${x}" y="190" width="${w}" height="70"/><rect class="cell" x="${x}" y="260" width="${w}" height="90"/>`;
+    s += text(P(x + w / 2, 225), h, 'tn') + text(P(x + w / 2, 305), unk === i ? '?' : v, unk === i ? 'tx tr' : 'tx');
+  });
+  return s;
+}
+function sqEq() {
+  if (!sq.show) return '';
+  const cmv = sq.z * sq.k, [rv, ru] = realUnit(cmv);
+  const conv = ru === 'km' ? `${de(rv)} km = ${de(rv * 1000)} m = ${de(cmv)} cm` : ru === 'm' ? `${de(rv)} m = ${de(cmv)} cm` : '';
+  if (sq.toReal) return rows([`${de(sq.z)} cm · ${de(sq.k)} = ${de(cmv)} cm`, conv.split(' = ').reverse().join(' = ')].filter(Boolean));
+  return rows([conv, `${de(cmv)} cm : ${de(sq.k)} = ${de(sq.z)} cm`].filter(Boolean));
+}
+
+// ---------- Folien ----------
+const STEPS = [
+  // Parallel und senkrecht
+  { t: 'Ein Regal', enter: () => { dy = 30; }, drag: shelfDrag, fig: shelfFig,
+    txt: () => dy === 0 ? 'Jetzt stimmt es: Die Böden sind parallel, und jeder Boden steht senkrecht auf der Seitenwand.' : 'Der mittlere Boden sitzt schief, die Bücher rutschen. Zieh ihn, bis er gerade ist.',
+    eq: () => dy === 0 ? 'Boden 1 ∥ Boden 2 &nbsp;&nbsp; Boden 2 ⊥ Seitenwand' : `Winkel an der Wand: ${Math.round(90 + deg(Math.atan2(dy, 300)))}° ≠ 90°` },
+  { t: 'Parallel oder senkrecht?', rv: 1, fig: () => linesFig(shown),
+    txt: () => shown ? 'Parallel: überall gleicher Abstand, kein Schnittpunkt. Senkrecht: Sie bilden einen rechten Winkel.' : 'Welche Geraden sind zueinander parallel, welche senkrecht?',
+    eq: () => shown ? 'a ∥ d &nbsp;&nbsp; b ⊥ c &nbsp;&nbsp; e ⊥ a &nbsp;&nbsp; e ⊥ d' : '' },
+  // Fachbegriffe
+  { t: 'Ein Laptop', rv: 1, c: LS, enter: () => { lw = 110; }, drag: laptopDrag, fig: () => laptopFig(shown),
+    txt: () => shown ? 'Jeder Winkel hat einen Scheitelpunkt, zwei Schenkel und einen Winkelbogen.' : 'Klappst du einen Laptop auf, entsteht ein Winkel α. Zieh am Bildschirm. Wie heißen die Teile des Winkels?',
+    eq: () => shown ? `α = ${lw}°` : '' },
+  // Winkelarten
+  { t: 'Der Minutenzeiger', c: CK, enter: () => { mins = 10; }, drag: clockDrag, fig: clockFig,
+    txt: 'In 60 Minuten dreht sich der Zeiger einmal ganz herum, also 360°. Pro Minute sind das 360° : 60 = 6°.',
+    eq: () => mins ? `${mins} · 6° = ${mins * 6}° &nbsp;→&nbsp; ${art(mins * 6)[0]}` : 'Zieh den Minutenzeiger.' },
+  { t: 'Die Winkelarten', rv: 1, fig: () => kindsFig(shown), txt: () => shown ? 'Die Grenzen sind 90°, 180° und 360°.' : 'Wie heißen diese Winkelarten?' },
+  { t: 'Aufgabe: Welche Winkelart?', enter: newKq, fig: kqFig,
+    btns: [{ l: 'Auflösen', f: () => { kq.show = !kq.show; } }, { l: 'Neuer Winkel', f: newKq }],
+    eq: () => kq.show ? `${art(kq.a)[1]} &nbsp;→&nbsp; ${art(kq.a)[0]}` : '' },
+  // Winkel messen
+  { t: 'Steht die Leiter sicher?', rv: 1, enter: () => { th = 58; }, drag: ladderDrag, fig: () => ladderFig(shown), txt: ladderTxt,
+    eq: () => shown ? `α = ${th}°` : '' },
+  { t: 'Mit dem Geodreieck messen', rv: 1, enter: newMq, fig: () => mqFig(shown),
+    btns: [{ l: 'Neuer Winkel', f: () => { newMq(); shown = false; } }],
+    txt: () => shown ? 'Lies auf der Skala ab, die an deinem ersten Schenkel bei 0° beginnt.' : 'Nullpunkt auf den Scheitelpunkt, 0-Linie auf einen Schenkel, kurzen Schenkel verlängern. Welche Zahl stimmt?',
+    eq: () => shown ? `α = ${mq.a}° &nbsp;&nbsp; ${art(mq.a)[0]}` : '' },
+  { t: 'Überstumpfe Winkel messen', rv: 1, enter: () => { rq = { a: 250, b: 20 }; }, fig: () => reflexFig(shown, false),
+    btns: [{ l: 'Neuer Winkel', f: () => { newRq(); shown = false; } }],
+    txt: () => shown ? 'Miss den Winkel β, der zum Vollwinkel fehlt. Dann rechne.' : 'Das Geodreieck reicht nur bis 180°. Wie misst du α?', eq: () => reflexEq(false) },
+  // Winkel zeichnen
+  { t: 'Einen Winkel zeichnen', enter: () => { zw = 40; zs = 1; }, fig: drawFig, txt: () => `Schritt ${zs}: ${ZT[zs]}`, eq: () => `α = ${zw}°`,
+    btns: [{ l: 'Nächster Schritt', f: () => { zs = Math.min(5, zs + 1); }, dis: () => zs === 5 },
+      { l: 'Neuer Winkel', f: () => { let a; do a = pick([25, 35, 50, 65, 75, 105, 120, 135, 150, 165]); while (a === zw); zw = a; zs = 1; } }] },
+  { t: 'Einen überstumpfen Winkel zeichnen', rv: 1, enter: () => { rq = { a: 290, b: 0 }; }, fig: () => reflexFig(shown, true),
+    btns: [{ l: 'Neuer Winkel', f: () => { newRq(); rq.b = 0; shown = false; } }],
+    txt: () => shown ? 'Zeichne β wie gewohnt. α ist der große Winkel außen herum.' : `Wie zeichnest du α = ${rq.a}°? Das Geodreieck reicht nur bis 180°.`, eq: () => reflexEq(true) },
+  // Koordinatensystem
+  { t: 'Punkte im Koordinatensystem', enter: () => { cpt = [3, 2]; }, tap: (w, p) => { const q = snap(p); if (q) cpt = q; },
+    fig: () => axes() + walk(cpt[0], cpt[1], 'P'),
+    txt: () => `Erst ${cpt[0]} nach rechts (x), dann ${cpt[1]} nach oben (y). Tipp einen anderen Gitterpunkt an.`, eq: () => `P(${cpt[0]} | ${cpt[1]})` },
+  { t: 'Die Reihenfolge zählt', rv: 1, fig: () => axes() + (shown ? walk(2, 5, 'P') + walk(5, 2, 'Q', 'g2', 'g2') : ''),
+    txt: () => shown ? 'Gleiche Zahlen, andere Reihenfolge, anderer Punkt. Die erste Zahl gehört zur x-Achse.' : 'Wo liegen P(2 | 5) und Q(5 | 2)?' },
+  { t: 'Aufgabe: Punkte eintragen', enter: () => { placed = 0; miss = null; }, tap: shapeTap, fig: shapeFig, txt: shapeTxt, eq: shapeEq,
+    btns: [{ l: 'Auflösen', f: () => { placed = SHAPES[sh].p.length; miss = null; } }, { l: 'Von vorn', f: () => { placed = 0; miss = null; } },
+      { l: 'Neue Figur', f: () => { sh = (sh + 1) % SHAPES.length; placed = 0; miss = null; } }] },
+  // Maßstab
+  { t: 'Wie weit ist es zum Freibad?', rv: 1, enter: () => { md = 4; }, drag: mapDrag, fig: mapFig, eq: mapEq,
+    txt: () => shown ? '1 cm auf der Karte sind 25 000 cm in Wirklichkeit.' : 'Auf der Wanderkarte misst du den Weg mit dem Lineal. Wie weit ist das in Wirklichkeit?' },
+  { t: 'Aufgabe: Maßstab', enter: newSq, fig: sqFig, eq: sqEq,
+    txt: () => sq.toReal ? 'Von der Zeichnung zur Wirklichkeit: mal rechnen.' : 'Von der Wirklichkeit zur Zeichnung: erst in cm umrechnen, dann geteilt rechnen.',
+    btns: [{ l: 'Auflösen', f: () => { sq.show = !sq.show; } }, { l: 'Neue Aufgabe', f: newSq }] }
+];
+
+// ---------- Ablauf ----------
+let step = 0, pair = 0, shown = false, shownStep = -1;
+function render() {
+  const st = STEPS[step];
+  $('title').textContent = typeof st.t === 'function' ? st.t() : st.t;
+  $('fig').innerHTML = st.fig();
+  $('txt').textContent = typeof st.txt === 'function' ? st.txt() : st.txt || '';
+  $('eq').innerHTML = st.eq ? st.eq() : '';
+  if (shownStep !== step) {
+    shownStep = step;
+    $('extras').innerHTML = (st.btns || []).map((b, i) => `<button data-b="${i}">${b.l}</button>`).join('');
+    $('cnt').textContent = `${step + 1} / ${STEPS.length}`;
+    $('prev').disabled = step === 0;
+  }
+  $('next').disabled = step === STEPS.length - 1 && !(st.rv && !shown);
+  const bs = $('extras').children || [];
+  for (let i = 0; i < bs.length; i++) bs[i].disabled = !!(st.btns[i].dis && st.btns[i].dis());
+}
+function go(d) {
+  const n = step + d; if (n < 0 || n >= STEPS.length) return;
+  step = n; pair = 0; shown = false;
+  if (typeof onGo === 'function') onGo();
+  if (STEPS[step].enter) STEPS[step].enter();
+  render();
+}
+$('prev').addEventListener('click', () => go(-1));
+// Bei Folien mit verdecktem Ergebnis deckt der erste Druck auf, der zweite geht weiter.
+const fwd = () => { const st = STEPS[step]; if (st.rv && !shown) { shown = true; render(); } else go(1); };
+$('next').addEventListener('click', fwd);
+$('extras').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  STEPS[step].btns[+b.dataset.b].f(); render();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); fwd(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+});
+
+const fig = $('fig'); let down = false;
+// Zeigerposition in Bildkoordinaten, auch wenn das Bild mit Rand eingepasst ist.
+function svgPt(e) {
+  const r = fig.getBoundingClientRect(), sc = Math.min(r.width / 800, r.height / 520);
+  return P((e.clientX - r.left - (r.width - 800 * sc) / 2) / sc, (e.clientY - r.top - (r.height - 520 * sc) / 2) / sc);
+}
+const ctr = st => typeof st.c === 'function' ? st.c() : st.c || M;
+fig.addEventListener('pointerdown', e => {
+  const st = STEPS[step], p = svgPt(e), w = dirOf(ctr(st), p);
+  if (st.tap) { st.tap(w, p); return render(); }
+  if (!st.drag) return;
+  if (st.down && st.down(p) === false) return;
+  down = true; try { fig.setPointerCapture(e.pointerId); } catch (x) {}
+  st.drag(w, p); render(); e.preventDefault();
+});
+fig.addEventListener('pointermove', e => { const st = STEPS[step]; if (down && st.drag) { const p = svgPt(e); st.drag(dirOf(ctr(st), p), p); render(); } });
+const up = () => { if (down) { down = false; const st = STEPS[step]; if (st.up) { st.up(); render(); } } };
+fig.addEventListener('pointerup', up); fig.addEventListener('pointercancel', up);
+if (typeof onGo === 'function') onGo();
+if (STEPS[0].enter) STEPS[0].enter();
+render();
+// Vollbild: Knopf oder Taste F. Nach einem Seitenwechsel holt der erste Tipp das Vollbild zurück.
+(() => {
+  const d = document, el = d.documentElement, b = d.getElementById('fs');
+  if (!b) return;
+  // Als App vom Home-Bildschirm gibt es keine Browserleisten. Vollbild brächte dort nur das X oben links.
+  const app = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  if (app || !(d.fullscreenEnabled || d.webkitFullscreenEnabled)) { b.hidden = true; return; }
+  const on = () => !!(d.fullscreenElement || d.webkitFullscreenElement);
+  const want = v => { try { if (v === undefined) return sessionStorage.getItem('fs') === '1'; sessionStorage.setItem('fs', v ? '1' : '0'); } catch (e) { return false; } };
+  const call = (o, f) => { if (!f) return; try { const p = f.call(o); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
+  const enter = () => call(el, el.requestFullscreen || el.webkitRequestFullscreen);
+  const exit = () => call(d, d.exitFullscreen || d.webkitExitFullscreen);
+  const toggle = () => { if (on()) { want(false); exit(); } else { want(true); enter(); } };
+  let leaving = false;
+  const sync = () => {
+    const f = on(); el.classList.toggle('fs', f); if (!f) el.classList.remove('wide');
+    b.setAttribute('aria-pressed', f); b.title = f ? 'Vollbild beenden (F)' : 'Vollbild (F)';
+  };
+  const change = () => { sync(); if (!on() && !leaving) want(false); };   // mit X oder Esc beendet
+  b.addEventListener('click', toggle);
+  d.addEventListener('fullscreenchange', change);
+  d.addEventListener('webkitfullscreenchange', change);
+  d.addEventListener('click', e => {
+    const a = e.target.closest('a[href]');
+    if (a) { if (!a.hasAttribute('download')) leaving = true; return; }
+    if (!b.contains(e.target) && !on() && want()) enter();
+  }, true);
+  d.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggle(); }
+    else if (e.key !== 'Escape' && !on() && want()) enter();
+  });
+  addEventListener('pagehide', () => { leaving = true; });
+  addEventListener('pageshow', () => { leaving = false; sync(); });
+  sync();
+})();
+// App vom Home-Bildschirm: Sie hat keine Zurück-Taste. Links führen deshalb nur zu eigenen Seiten, und die haben alle einen Weg zum Menü.
+if (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches) document.addEventListener('click', e => {
+  const a = e.target.closest('a[href]'); if (!a) return;
+  const u = new URL(a.href);
+  if (a.hasAttribute('download') || u.origin !== location.origin || !/(\/|\.html)$/.test(u.pathname)) e.preventDefault();
+}, true);
+// Offline: Nach dem ersten Aufruf liegen alle Stunden und Arbeitsblätter im Speicher.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
