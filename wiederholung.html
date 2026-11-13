@@ -235,14 +235,14 @@ function laptopFig(show) {
 const laptopDrag = w => { lw = clamp(Math.round(w), 40, 170); };
 
 // ---------- Winkelarten ----------
-const KINDS = [[50, '0° < α < 90°', 'spitz'], [130, '90° < α < 180°', 'stumpf'], [250, '180° < α < 360°', 'überstumpf']];
+const KINDS = [[50, '0° < α < 90°', 'spitz'], [90, 'α = 90°', 'rechter Winkel'], [130, '90° < α < 180°', 'stumpf'], [250, '180° < α < 360°', 'überstumpf']];
 function kindsFig(show) {
   let s = '';
   KINDS.forEach(([a, r, n], i) => {
-    const cx = 140 + i * 260, V = P(cx - (a > 180 ? 10 : 55), 260);
-    s += wedge(V, 0, a, 62, 'c1') + ray(V, 0, 150) + ray(V, a, a > 180 ? 125 : 150) + dot(V, 7);
-    s += text(P(cx, 430), r, 'tm');
-    if (show) s += text(P(cx, 90), n, 'tx');
+    const cx = 100 + i * 200, V = P(cx - (a > 180 ? 30 : a > 90 ? 20 : 50), 260);
+    s += (a === 90 ? rmark(V, 0, 34) : wedge(V, 0, a, 52, 'c1')) + ray(V, 0, 110) + ray(V, a, a > 180 ? 100 : 110) + dot(V, 7);
+    s += text(P(cx, 430), r, 'tn');
+    if (show) s += text(P(cx, 100), n, 'tm');
   });
   return s;
 }
@@ -284,7 +284,7 @@ const STEPS = [
   { t: 'Teile eines Winkels', rv: 1, c: LS, enter: () => { lw = 110; }, drag: laptopDrag, fig: () => laptopFig(shown),
     txt: () => shown ? 'Jeder Winkel hat einen Scheitelpunkt, zwei Schenkel und einen Winkelbogen.' : 'Klappst du einen Laptop auf, entsteht ein Winkel α. Wie heißen seine Teile?',
     eq: () => shown ? `α = ${lw}°` : '' },
-  { t: 'Winkelarten', rv: 1, fig: () => kindsFig(shown), txt: () => shown ? 'Die Grenzen sind 90° und 180°.' : 'Wie heißen diese Winkelarten?' },
+  { t: 'Winkelarten', rv: 1, fig: () => kindsFig(shown), txt: () => shown ? 'Genau 90° ist ein rechter Winkel. Die Grenzen sind 90° und 180°.' : 'Wie heißen diese Winkelarten?' },
   { t: 'Winkel messen', rv: 1, fig: () => measureFig(shown),
     txt: () => shown ? 'Lies auf der Skala ab, die an deinem ersten Schenkel bei 0° beginnt.' : 'Nullpunkt auf den Scheitelpunkt, 0-Linie auf einen Schenkel, kurzen Schenkel verlängern. Welche Zahl stimmt?',
     eq: () => shown ? `α = ${MA}°, denn der Winkel ist spitz.` : '' },
