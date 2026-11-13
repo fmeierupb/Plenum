@@ -75,6 +75,7 @@ svg .tn{fill:var(--fg);font:600 20px system-ui,sans-serif}
 svg .arc{stroke:var(--c1);stroke-width:4;fill:none}
 svg .g1{stroke:var(--c1);stroke-width:6;stroke-linecap:round;fill:none}
 svg .g2{stroke:var(--c2);stroke-width:6;stroke-linecap:round;fill:none}
+svg .gr{stroke:#d81e1e;stroke-width:6;stroke-linecap:round;fill:none}
 svg .g3{stroke:var(--c3);stroke-width:6;stroke-linecap:round;fill:none}
 svg .lap{fill:var(--mut);opacity:.25}
 svg .scr{fill:var(--c1);opacity:.12}
@@ -201,20 +202,16 @@ function shelfFig() {
 const shelfDrag = (w, p) => { const v = clamp(Math.round(p.y - 280), -70, 70); dy = Math.abs(v) < 8 ? 0 : v; };
 
 // ---------- Geraden erkennen ----------
-const GL = [
-  { n: 'a', c: P(235, 160), w: 330, h: 175 }, { n: 'd', c: P(470, 240), w: 330, h: 175 },
-  { n: 'e', c: P(600, 310), w: 60, h: 150 }, { n: 'b', c: P(130, 360), w: 90, h: 120 }, { n: 'c', c: P(400, 450), w: 0, h: 330 }];
+// a ∥ b, c senkrecht zu beiden. d und e sehen fast parallel aus, kommen sich aber nach rechts näher und schneiden sich weit außerhalb.
+const yd = x => 320 + 0.025 * (x - 330), ye = x => 440 - 0.025 * (x - 330);
+// Abstand zwischen zwei Punkten übereinander, mit Endstrichen und Länge in cm (50 Bildpunkte = 1 cm)
+const gap = (x, y1, y2) => seg(P(x, y1 + 6), P(x, y2 - 6), 'da') + seg(P(x - 9, y1 + 6), P(x + 9, y1 + 6), 'thin') + seg(P(x - 9, y2 - 6), P(x + 9, y2 - 6), 'thin') + text(P(x + 44, (y1 + y2) / 2), cm(y2 - y1) + ' cm', 'tn');
 function linesFig(show) {
-  const col = { a: 'g1', d: 'g1', b: 'g2', c: 'g2', e: 'g3' };
-  let s = '';
-  GL.forEach(g => { s += seg(pol(g.h, g.w + 180, g.c), pol(g.h, g.w, g.c), show ? col[g.n] : 'ln'); });
-  GL.forEach(g => { const e = pol(g.h + 26, g.w, g.c); s += text(e, g.n, 'tx'); });
-  if (show) {
-    // e ⊥ d am Schnittpunkt, b ⊥ c am Schnittpunkt
-    const d = GL[1], e = GL[2], u = P(Math.cos(rad(330)), -Math.sin(rad(330))), v = P(Math.cos(rad(60)), -Math.sin(rad(60)));
-    const det = u.x * v.y - u.y * v.x, dx = e.c.x - d.c.x, dy2 = e.c.y - d.c.y, t = (dx * v.y - dy2 * v.x) / det;
-    s += rmark(P(d.c.x + t * u.x, d.c.y + t * u.y), 330, 22, 'thin') + rmark(P(130, 450), 0, 22, 'thin');
-  }
+  const k = c => show ? c : 'ln';
+  let s = seg(P(60, 120), P(740, 120), k('g1')) + seg(P(60, 220), P(740, 220), k('g1')) + seg(P(200, 50), P(200, 490), k('g2'))
+    + seg(P(330, yd(330)), P(740, yd(740)), k('gr')) + seg(P(330, ye(330)), P(740, ye(740)), k('gr'));
+  s += text(P(770, 120), 'a') + text(P(770, 220), 'b') + text(P(228, 62), 'c') + text(P(770, yd(740)), 'd') + text(P(770, ye(740)), 'e');
+  if (show) s += rmark(P(200, 120), 0, 22) + rmark(P(200, 220), 0, 22) + gap(400, 120, 220) + gap(680, 120, 220) + gap(360, yd(360), ye(360)) + gap(700, yd(700), ye(700));
   return s;
 }
 
@@ -279,8 +276,8 @@ const STEPS = [
     txt: () => dy === 0 ? 'Jetzt stimmt es: Die Böden sind parallel, und jeder Boden steht senkrecht auf der Seitenwand.' : 'Der mittlere Boden sitzt schief, die Bücher rutschen. Zieh ihn, bis er gerade ist.',
     eq: () => dy === 0 ? 'Boden 1 ∥ Boden 2 &nbsp;&nbsp; Boden 2 ⊥ Seitenwand' : `Winkel an der Wand: ${Math.round(90 + deg(Math.atan2(dy, 300)))}° ≠ 90°` },
   { t: 'Parallel oder senkrecht?', rv: 1, fig: () => linesFig(shown),
-    txt: () => shown ? 'Parallel: überall gleicher Abstand, kein Schnittpunkt. Senkrecht: Sie bilden einen rechten Winkel.' : 'Welche Geraden sind zueinander parallel, welche senkrecht?',
-    eq: () => shown ? 'a ∥ d &nbsp;&nbsp; b ⊥ c &nbsp;&nbsp; e ⊥ a &nbsp;&nbsp; e ⊥ d' : '' },
+    txt: () => shown ? 'Parallel heißt: überall gleicher Abstand. d und e kommen sich näher und schneiden sich weiter rechts. Sie sind nicht parallel.' : 'Welche Geraden sind zueinander parallel, welche senkrecht?',
+    eq: () => shown ? 'a ∥ b &nbsp;&nbsp; c ⊥ a &nbsp;&nbsp; c ⊥ b &nbsp;&nbsp; d, e: nicht parallel' : '' },
   { t: 'Teile eines Winkels', rv: 1, c: LS, enter: () => { lw = 110; }, drag: laptopDrag, fig: () => laptopFig(shown),
     txt: () => shown ? 'Jeder Winkel hat einen Scheitelpunkt, zwei Schenkel und einen Winkelbogen.' : 'Klappst du einen Laptop auf, entsteht ein Winkel α. Wie heißen seine Teile?',
     eq: () => shown ? `α = ${lw}°` : '' },
