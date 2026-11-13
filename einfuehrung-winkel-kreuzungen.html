@@ -12,8 +12,8 @@
 <meta name="theme-color" content="#0f766e">
 <title>Winkel an Kreuzungen</title>
 <style>
-:root{--bg:#fbfaf6;--fg:#161a22;--mut:#9aa0ad;--line:#d9d7cf;--c1:#2563eb;--c2:#f08a00;--c3:#12a150;--btn:#fff;--wood:#dcae6c;--woodb:#7a4e22;--strip:#e9e7df}
-@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#f0f2f6;--mut:#7d8596;--line:#343b48;--c1:#5b9bff;--c2:#ffad33;--c3:#3ddc84;--btn:#1f242d;--wood:#c99a5b;--strip:#07090c}}
+:root{--bg:#fbfaf6;--fg:#161a22;--mut:#9aa0ad;--line:#d9d7cf;--c1:#2563eb;--c2:#f08a00;--c3:#12a150;--btn:#fff;--wood:#dcae6c;--woodb:#7a4e22}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#f0f2f6;--mut:#7d8596;--line:#343b48;--c1:#5b9bff;--c2:#ffad33;--c3:#3ddc84;--btn:#1f242d;--wood:#c99a5b}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 body{display:flex;flex-direction:column;height:100dvh;padding:12px 16px calc(12px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none}
@@ -30,8 +30,6 @@ button:disabled{opacity:.3}
 #fs svg{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em}
 #fs .fo,html.fs #fs .fi{display:none}
 html.fs #fs .fo{display:inline}
-html.tafel body{padding-top:var(--tt);padding-bottom:0;background:linear-gradient(var(--strip) var(--tt),var(--bg) var(--tt),var(--bg) calc(var(--tt) + var(--bh)),var(--strip) calc(var(--tt) + var(--bh)))}
-html.tafel footer{height:var(--tb);margin-top:0;padding-bottom:env(safe-area-inset-bottom)}
 #cnt{color:var(--mut);font-size:clamp(14px,1.6vw,20px);min-width:3.5em;text-align:center}
 #next{background:var(--c1);border-color:var(--c1);color:#fff;font-weight:700}
 svg .ln{stroke:var(--fg);stroke-width:5;stroke-linecap:round}
@@ -323,21 +321,6 @@ STEPS[0].enter(); render();
   addEventListener('pagehide', () => { leaving = true; });
   addEventListener('pageshow', () => { leaving = false; sync(); });
   sync();
-})();
-// Smartboard: Der Stick schneidet das iPad-Bild mittig auf 16:9 zu. Inhalt in diesen Streifen, Knöpfe in den Rand darunter.
-(() => {
-  const el = document.documentElement;
-  let an = false; try { an = localStorage.getItem('plenum-tafel') === '1'; } catch (e) {}
-  if (!an) return;
-  const fit = () => {
-    const W = Math.max(screen.width, screen.height), H = Math.min(screen.width, screen.height);
-    const band = Math.round(W * 9 / 16), oben = Math.max(0, H - innerHeight);   // oben: Leisten über der Seite
-    const tt = Math.max(0, Math.round((H - band) / 2) - oben), tb = innerHeight - tt - band;
-    const ok = innerWidth > innerHeight && tb >= 50;
-    el.classList.toggle('tafel', ok);
-    if (ok) { el.style.setProperty('--tt', tt + 'px'); el.style.setProperty('--bh', band + 'px'); el.style.setProperty('--tb', tb + 'px'); }
-  };
-  addEventListener('resize', fit); fit();
 })();
 // Offline: Nach dem ersten Aufruf liegen alle Stunden und Arbeitsblätter im Speicher.
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
