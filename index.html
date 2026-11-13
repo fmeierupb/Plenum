@@ -29,6 +29,9 @@ html.fs #fs .fo{display:inline}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px}
 .top h1{margin:0}
 #fs{font:inherit;font-size:clamp(20px,2.4vw,26px);color:inherit;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer}
+.fassung{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:28px;font-size:13px;color:var(--mut)}
+.fassung button{font:inherit;font-size:14px;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 12px;cursor:pointer}
+.fassung button:disabled{opacity:.5}
 </style>
 </head>
 <body>
@@ -39,6 +42,7 @@ html.fs #fs .fo{display:inline}
 <section><h2>Mittelsenkrechte und Winkelhalbierende</h2><div class="row"><a class="go" href="mittelsenkrechte-winkelhalbierende.html">Einführung</a><a href="ab.html?n=ab-mittelsenkrechte-winkelhalbierende">Arbeitsblatt</a></div></section>
 <section><h2>Umkreis und Inkreis</h2><div class="row"><a class="go" href="umkreis-inkreis.html">Einführung</a><a href="ab.html?n=ab-umkreis-inkreis">Arbeitsblatt</a></div></section>
 <section><h2>Dreiecke konstruieren: SSS, SWS, WSW</h2><div class="row"><a class="go" href="dreiecke-konstruieren.html">Einführung</a><a href="ab.html?n=ab-dreiecke-konstruieren">Arbeitsblatt</a></div></section>
+<div class="fassung"><span>Fassung <span id="stand">13.11.2026 09:34</span></span><button id="aktualisieren" type="button">Neueste Fassung laden</button><span id="fassung-status"></span></div>
 <script>
 // Vollbild: Knopf oder Taste F. Nach einem Seitenwechsel holt der erste Tipp das Vollbild zurück.
 (() => {
@@ -75,6 +79,31 @@ html.fs #fs .fo{display:inline}
   addEventListener('pagehide', () => { leaving = true; });
   addEventListener('pageshow', () => { leaving = false; sync(); });
   sync();
+})();
+// Neueste Fassung laden: Service Worker prüfen, neue Fassung vollständig in den Speicher holen, dann neu laden.
+(() => {
+  const $ = id => document.getElementById(id), STAND = $('stand').textContent.trim(), st = $('fassung-status');
+  $('aktualisieren').addEventListener('click', async () => {
+    if (!navigator.onLine) { st.textContent = 'Kein Netz. Es bleibt bei dieser Fassung.'; return; }
+    st.textContent = 'Lade …'; $('aktualisieren').disabled = true;
+    try { sessionStorage.setItem('plenum-vorher', STAND); } catch (e) {}
+    try {
+      const reg = 'serviceWorker' in navigator && await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.update();
+        const w = reg.installing || reg.waiting;
+        if (w) await new Promise(ok => {
+          const t = setTimeout(ok, 30000);
+          w.addEventListener('statechange', () => { if (w.state === 'activated' || w.state === 'redundant') { clearTimeout(t); ok(); } });
+        });
+      }
+    } catch (e) {}
+    location.reload();
+  });
+  try {
+    const vorher = sessionStorage.getItem('plenum-vorher');
+    if (vorher) { sessionStorage.removeItem('plenum-vorher'); st.textContent = vorher === STAND ? 'Keine neuere Fassung gefunden.' : 'Neue Fassung geladen.'; }
+  } catch (e) {}
 })();
 // Offline: Nach dem ersten Aufruf liegen alle Stunden und Arbeitsblätter im Speicher.
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
