@@ -198,7 +198,7 @@ function trackFig(show) {
 }
 
 // ---------- Geraden erkennen ----------
-// a ∥ b, c senkrecht zu beiden. d und e sehen fast parallel aus, kommen sich aber nach rechts näher und schneiden sich weit außerhalb.
+// f ∥ g, h senkrecht zu beiden. j und k sehen fast parallel aus, kommen sich aber nach rechts näher und schneiden sich weit außerhalb.
 const yd = x => 320 + 0.025 * (x - 330), ye = x => 440 - 0.025 * (x - 330);
 // Abstand zwischen zwei Punkten übereinander, mit Endstrichen und Länge in cm (50 Bildpunkte = 1 cm)
 const gap = (x, y1, y2) => seg(P(x, y1 + 6), P(x, y2 - 6), 'da') + seg(P(x - 9, y1 + 6), P(x + 9, y1 + 6), 'thin') + seg(P(x - 9, y2 - 6), P(x + 9, y2 - 6), 'thin') + text(P(x + 44, (y1 + y2) / 2), cm(y2 - y1) + ' cm', 'tn');
@@ -206,7 +206,7 @@ function linesFig(show) {
   const k = c => show ? c : 'ln';
   let s = seg(P(60, 120), P(740, 120), k('g1')) + seg(P(60, 220), P(740, 220), k('g1')) + seg(P(200, 50), P(200, 490), k('g2'))
     + seg(P(330, yd(330)), P(740, yd(740)), k('gr')) + seg(P(330, ye(330)), P(740, ye(740)), k('gr'));
-  s += text(P(770, 120), 'a') + text(P(770, 220), 'b') + text(P(228, 62), 'c') + text(P(770, yd(740)), 'd') + text(P(770, ye(740)), 'e');
+  s += text(P(770, 120), 'f') + text(P(770, 220), 'g') + text(P(228, 62), 'h') + text(P(770, yd(740)), 'j') + text(P(770, ye(740)), 'k');
   if (show) s += rmark(P(200, 120), 0, 22) + rmark(P(200, 220), 0, 22) + gap(400, 120, 220) + gap(680, 120, 220) + gap(360, yd(360), ye(360)) + gap(700, yd(700), ye(700));
   return s;
 }
@@ -272,8 +272,8 @@ const STEPS = [
     txt: () => shown ? 'Die Schienen haben überall 1435 mm Abstand, sie sind parallel. Die Schwellen liegen senkrecht zu den Schienen.' : 'Ein Bahngleis von oben. Was fällt an den Schienen und Schwellen auf?',
     eq: () => shown ? 'Schiene 1 ∥ Schiene 2 &nbsp;&nbsp; Schwelle ⊥ Schiene' : '' },
   { t: 'Parallel oder senkrecht?', rv: 1, fig: () => linesFig(shown),
-    txt: () => shown ? 'Parallel heißt: überall gleicher Abstand. d und e kommen sich näher und schneiden sich weiter rechts. Sie sind nicht parallel.' : 'Welche Geraden sind zueinander parallel, welche senkrecht?',
-    eq: () => shown ? 'a ∥ b &nbsp;&nbsp; c ⊥ a &nbsp;&nbsp; c ⊥ b &nbsp;&nbsp; d, e: nicht parallel' : '' },
+    txt: () => shown ? 'Parallel heißt: überall gleicher Abstand. j und k kommen sich näher und schneiden sich weiter rechts. Sie sind nicht parallel.' : 'Welche Geraden sind zueinander parallel, welche senkrecht?',
+    eq: () => shown ? 'f ∥ g &nbsp;&nbsp; h ⊥ f &nbsp;&nbsp; h ⊥ g &nbsp;&nbsp; j, k: nicht parallel' : '' },
   { t: 'Teile eines Winkels', rv: 1, c: LS, enter: () => { lw = 110; }, drag: laptopDrag, fig: () => laptopFig(shown),
     txt: () => shown ? 'Jeder Winkel hat einen Scheitelpunkt, zwei Schenkel und einen Winkelbogen.' : 'Klappst du einen Laptop auf, entsteht ein Winkel α. Wie heißen seine Teile?',
     eq: () => shown ? `α = ${lw}°` : '' },
