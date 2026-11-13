@@ -343,6 +343,12 @@ render();
   addEventListener('pageshow', () => { leaving = false; sync(); });
   sync();
 })();
+// App vom Home-Bildschirm: Sie hat keine Zurück-Taste. Links führen deshalb nur zu eigenen Seiten, und die haben alle einen Weg zum Menü.
+if (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches) document.addEventListener('click', e => {
+  const a = e.target.closest('a[href]'); if (!a) return;
+  const u = new URL(a.href);
+  if (a.hasAttribute('download') || u.origin !== location.origin || !/(\/|\.html)$/.test(u.pathname)) e.preventDefault();
+}, true);
 // Offline: Nach dem ersten Aufruf liegen alle Stunden und Arbeitsblätter im Speicher.
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>

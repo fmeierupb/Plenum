@@ -45,18 +45,22 @@ document.title = AB[n];
 // PDF: Als App vom Home-Bildschirm hätte ein Link zum PDF keinen Rückweg. Deshalb geht das PDF ins Teilen-Menü
 // (In Dateien sichern oder in einer anderen App öffnen). Es wird vorab geladen, weil iOS das Teilen nur direkt nach dem Tippen erlaubt.
 (() => {
-  const a = document.getElementById('pdf'); let datei = null;
-  if (!navigator.canShare) return;   // ohne Teilen-Menü bleibt es beim normalen Download
-  a.style.opacity = '.4';
-  fetch(a.href).then(r => r.ok ? r.blob() : null).then(b => {
-    if (!b) return;
+  const a = document.getElementById('pdf');
+  const app = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  let datei = null, zustand = 'laden';
+  // laden: Knopf blass und ohne Wirkung. teilen: Teilen-Menü. link: normaler Download im Browser. weg: Knopf ausgeblendet.
+  const setzen = z => { zustand = z; a.style.opacity = z === 'laden' ? '.4' : ''; a.hidden = z === 'weg'; };
+  const ohne = () => setzen(app ? 'weg' : 'link');
+  if (!navigator.canShare) { ohne(); return; }
+  setzen('laden');
+  fetch(a.href).then(r => r.ok ? r.blob() : Promise.reject()).then(b => {
     const f = new File([b], AB[n].replace(/[:\/]/g, '') + '.pdf', { type: 'application/pdf' });
-    if (navigator.canShare({ files: [f] })) { datei = f; a.style.opacity = ''; }
-  }).catch(() => {});
+    if (navigator.canShare({ files: [f] })) { datei = f; setzen('teilen'); } else ohne();
+  }).catch(ohne);
   a.addEventListener('click', e => {
-    if (!datei) return;
+    if (zustand === 'link') return;
     e.preventDefault();
-    navigator.share({ files: [datei] }).catch(() => {});
+    if (zustand === 'teilen') navigator.share({ files: [datei] }).catch(() => {});
   });
 })();
 // Im Vollbild: ganze Seite sichtbar, Tipp aufs Blatt schaltet auf Seitenbreite zum Scrollen.
@@ -97,6 +101,12 @@ document.getElementById('img').addEventListener('click', () => { const h = docum
   addEventListener('pageshow', () => { leaving = false; sync(); });
   sync();
 })();
+// App vom Home-Bildschirm: Sie hat keine Zurück-Taste. Links führen deshalb nur zu eigenen Seiten, und die haben alle einen Weg zum Menü.
+if (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches) document.addEventListener('click', e => {
+  const a = e.target.closest('a[href]'); if (!a) return;
+  const u = new URL(a.href);
+  if (a.hasAttribute('download') || u.origin !== location.origin || !/(\/|\.html)$/.test(u.pathname)) e.preventDefault();
+}, true);
 // Offline: Nach dem ersten Aufruf liegen alle Stunden und Arbeitsblätter im Speicher.
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>

@@ -1,5 +1,5 @@
 // Eigener Cache-Präfix, damit andere Werkzeuge unter derselben Adresse unberührt bleiben.
-const CACHE = 'plenum-cbb17699';
+const CACHE = 'plenum-78fbc19f';
 // Alles, was beim ersten Aufruf in den Speicher kommt.
 const FILES = [
   './',
@@ -59,6 +59,9 @@ self.addEventListener('fetch', e => {
       if (res) return res;
     } catch (err) {}
     const hit = await cache.match(req, { ignoreSearch: true });
-    return hit || net;
+    if (hit) return hit;
+    // Eine Seite, die weder im Netz noch im Speicher ist, führt zur Startseite statt auf eine Fehlerseite ohne Rückweg.
+    if (req.mode === 'navigate') { const start = await cache.match('./'); if (start) return start; }
+    return net;
   })());
 });
