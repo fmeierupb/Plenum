@@ -181,7 +181,7 @@ function geo(c, base, r, o = {}) {
   return s;
 }
 // ---------- Bahngleis: parallel und senkrecht ----------
-// Gleis von oben: Schwellen aus Holz, darauf zwei Schienen. Normalspur 1435 mm.
+// Gleis von oben: Schwellen aus Holz, darauf zwei Schienen. Regelspur 1435 mm (BOA NRW § 6), Meterspur 1000 mm.
 const R1 = 190, R2 = 330;
 function trackFig(show) {
   let s = '';
@@ -193,6 +193,7 @@ function trackFig(show) {
     s += seg(P(x, R1 + 10), P(x, R2 - 10), 'da') + seg(P(x - 9, R1 + 10), P(x + 9, R1 + 10), 'thin') + seg(P(x - 9, R2 - 10), P(x + 9, R2 - 10), 'thin');
     s += `<rect class="lab" x="${x + 10}" y="${(R1 + R2) / 2 - 18}" width="112" height="36" rx="6"/>` + text(P(x + 66, (R1 + R2) / 2), '1435 mm', 'tn');
   });
+  s += text(P(400, 425), 'Regelspur (Normalspur): 1435 mm, z. B. Deutsche Bahn', 'tn') + text(P(400, 468), 'Meterspur: 1000 mm, z. B. Stadtbahn Bielefeld', 'tn');
   return s;
 }
 
