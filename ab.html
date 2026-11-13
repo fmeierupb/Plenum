@@ -18,7 +18,8 @@
 html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 header{position:sticky;top:0;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;background:var(--bg);border-bottom:1px solid var(--line)}
 header a{border:1px solid var(--line);border-radius:12px;padding:10px 16px;color:inherit;text-decoration:none;font-weight:600;font-size:18px}
-#t{flex:1;font-weight:700;font-size:clamp(17px,2.2vw,24px)}
+#t{flex:1;min-width:0;overflow-wrap:anywhere;font-weight:700;font-size:clamp(17px,2.2vw,24px)}
+@media (max-width:420px){header{gap:8px;padding-left:8px;padding-right:8px}header a,header button{padding:8px 10px;font-size:16px}#t{font-size:15px}}
 img{display:block;width:100%;max-width:1000px;margin:12px auto;background:#fff;border-radius:6px}
 #fs svg{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em}
 #fs .fo,html.fs #fs .fi{display:none}
