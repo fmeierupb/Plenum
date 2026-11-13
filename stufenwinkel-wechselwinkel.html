@@ -150,7 +150,8 @@ function par(o = {}) {
   if (!o.noPar && tlt === 0) s += text(P(60, 30), 'g ∥ h', 'ts');
   return s;
 }
-function rot(w) { let n = Math.round(w); if (n >= 180) n -= 180; a = clamp(n, 35, 145); }
+// f zeigt zum Finger. Außerhalb von 35° bis 145° bleibt f an der Grenze, an der es gerade steht, statt auf die andere Seite zu springen.
+function rot(w) { const n = ((Math.round(w) % 180) + 180) % 180; a = n >= 35 && n <= 145 ? n : a < 90 ? 35 : 145; }
 function tilt(w) { let x = w > 180 ? w - 360 : w; if (x > 90) x -= 180; if (x < -90) x += 180; tlt = Math.abs(x) < 2 ? 0 : clamp(Math.round(x), -15, 15); }
 
 // Begründung der Stufenwinkel: g wird an f entlang verschoben und nimmt den Winkel α₁ als α₁' mit.
@@ -163,9 +164,9 @@ function stufFig(n) {
   if (n < 3) s += xline(Q, 0, 'gh') + wedge(Q, 0, a, 78, 'c1', n === 2 ? `α₁' = α₂` : `α₁' = ${w}°`, 'tx', 150);
   return s;
 }
+// Die verschobene Gerade ist waagerecht. Ihre Lage hängt nur von der Höhe des Fingers ab, sie bleibt also immer unter dem Finger.
 function shiftDrag(w, p) {
-  const [g0, h0] = C(), dx = h0.x - g0.x, dy = h0.y - g0.y;
-  const t = ((p.x - g0.x) * dx + (p.y - g0.y) * dy) / (dx * dx + dy * dy);
+  const t = (p.y - GY) / (HY - GY);
   off = t > 0.94 ? 1 : clamp(t, 0.25, 1);
 }
 const WS = ["α₁' = α₁ &nbsp;&nbsp; verschoben", "α₁' = α₂ &nbsp;&nbsp; g ∥ h", 'Also: α₁ = α₂'];

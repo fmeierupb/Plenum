@@ -187,7 +187,8 @@ function knFig() {
 }
 
 // ---------- Ziehen ----------
-function cross(w) { let n = Math.round(w); if (n >= 180) n -= 180; a = clamp(n, 20, 160); }
+// Die Gerade zeigt zum Finger. Außerhalb von 20° bis 160° bleibt sie an der Grenze, an der sie gerade steht, statt auf die andere Seite zu springen.
+function cross(w) { const n = ((Math.round(w) % 180) + 180) % 180; a = n >= 20 && n <= 160 ? n : a < 90 ? 20 : 160; }
 function cut(w) { if (w > 180) w = w > 270 ? 0 : 180; a = aw = clamp(Math.round(w / 5) * 5, 10, 170); }
 function stoss(w) { if (w > 180) w = w > 270 ? 0 : 180; setBeta(Math.round((180 - w) / 5) * 5); }
 function setBeta(b) { beta = clamp(b, 10, 170); joined = false; }
