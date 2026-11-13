@@ -153,19 +153,29 @@ function par(o = {}) {
 function rot(w) { let n = Math.round(w); if (n >= 180) n -= 180; a = clamp(n, 35, 145); }
 function tilt(w) { let x = w > 180 ? w - 360 : w; if (x > 90) x -= 180; if (x < -90) x += 180; tlt = Math.abs(x) < 2 ? 0 : clamp(Math.round(x), -15, 15); }
 
-// g wird an f entlang auf h geschoben.
-function shiftFig() {
-  const [g0, h0] = C(), Q = P(g0.x + off * (h0.x - g0.x), g0.y + off * (h0.y - g0.y));
-  let s = par({ names: 1, only: off > 0.9 ? [] : ['1,0', '1,1', '1,2', '1,3'] });
-  s += xline(Q, 0, 'gh');
-  spans(0).forEach((sp, i) => { s += wedge(Q, sp[0], sp[1], 78, i % 2 ? 'c2' : 'c1', NM[i], 'tx', 150); });
+// Begründung der Stufenwinkel: g wird an f entlang verschoben und nimmt den Winkel α als α' mit.
+// Schritt 1: α und α'. Schritt 2: α' liegt auf α₁. Schritt 3: α und α₁.
+function stufFig(n) {
+  const [g0, h0] = C(), Q = P(g0.x + off * (h0.x - g0.x), g0.y + off * (h0.y - g0.y)), w = v(0, 0), col = {};
+  if (n !== 2) col['0,0'] = 'c1';
+  if (n === 3) col['1,0'] = 'c1';
+  let s = par({ col, names: 1, vals: 1, only: Object.keys(col) });
+  if (n < 3) s += xline(Q, 0, 'gh') + wedge(Q, 0, a, 78, 'c1', n === 2 ? `α' = α₁` : `α' = ${w}°`, 'tx', 150);
   return s;
 }
 function shiftDrag(w, p) {
   const [g0, h0] = C(), dx = h0.x - g0.x, dy = h0.y - g0.y;
   const t = ((p.x - g0.x) * dx + (p.y - g0.y) * dy) / (dx * dx + dy * dy);
-  off = t > 0.94 ? 1 : t < 0.04 ? 0 : clamp(t, 0, 1);
+  off = t > 0.94 ? 1 : clamp(t, 0.25, 1);
 }
+const WS = ["α' = α &nbsp;&nbsp; verschoben", "α' = α₁ &nbsp;&nbsp; g ∥ h", 'Also: α = α₁'];
+const whyS = n => ({
+  t: 'Warum sind Stufenwinkel gleich groß?', fig: () => stufFig(n), eq: () => lines(WS, n),
+  enter: () => { off = n === 1 ? 0.4 : 1; }, drag: n === 1 ? shiftDrag : rot,
+  txt: [() => off === 1 ? 'Die verschobene Gerade g liegt jetzt genau auf h.' : 'Schieb g an f entlang nach unten. Dabei ändert sich der Winkel nicht. Der verschobene Winkel heißt α\'.',
+    'g und h sind parallel. Deshalb liegt die verschobene Gerade genau auf h, und α\' liegt genau auf α₁.',
+    'Stufenwinkel an parallelen Geraden sind gleich groß.'][n - 1]
+});
 
 // ---------- Parkplatz ----------
 const KY = 400, K1 = P(170, KY), K2 = P(440, KY), K3 = P(710, KY);
@@ -220,8 +230,7 @@ const STEPS = [
     fig: () => { const i = pair % 4, c = {}, h = {}; c[key(0, i)] = 'c1'; c[key(1, i)] = 'c1'; if (!shown) h[key(1, i)] = 1; return par({ col: c, names: 1, vals: 1, only: Object.keys(c), hidden: h }); },
     txt: () => shown ? 'Stufenwinkel liegen an beiden Kreuzungen an der gleichen Stelle. Bei parallelen Geraden sind sie gleich groß.' : '',
     eq: () => { const i = pair % 4; return shown ? `${nm(0, i)} = ${nm(1, i)} = ${v(0, i)}°` : ''; } },
-  { t: 'Warum? Schieb g an f entlang', drag: shiftDrag, fig: shiftFig,
-    txt: () => off === 1 ? 'g liegt jetzt genau auf h. Alle vier Winkel passen aufeinander.' : 'Zieh g an f entlang nach unten.' },
+  whyS(1), whyS(2), whyS(3),
   { t: 'Und wenn g und h nicht parallel sind?', c: () => C()[1], enter: () => { tlt = 8; }, drag: tilt,
     fig: () => par({ col: { '0,0': 'c1', '1,0': 'c1' }, names: 1, vals: 1, only: ['0,0', '1,0'] }),
     txt: () => tlt === 0 ? 'g und h sind parallel. Die Stufenwinkel sind gleich groß.' : 'g und h sind nicht parallel. Die Stufenwinkel sind verschieden groß.',
