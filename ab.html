@@ -42,6 +42,23 @@ document.getElementById('img').alt = AB[n];
 document.getElementById('pdf').href = 'ab/' + n + '.pdf';
 document.getElementById('t').textContent = AB[n];
 document.title = AB[n];
+// PDF: Als App vom Home-Bildschirm hätte ein Link zum PDF keinen Rückweg. Deshalb geht das PDF ins Teilen-Menü
+// (In Dateien sichern oder in einer anderen App öffnen). Es wird vorab geladen, weil iOS das Teilen nur direkt nach dem Tippen erlaubt.
+(() => {
+  const a = document.getElementById('pdf'); let datei = null;
+  if (!navigator.canShare) return;   // ohne Teilen-Menü bleibt es beim normalen Download
+  a.style.opacity = '.4';
+  fetch(a.href).then(r => r.ok ? r.blob() : null).then(b => {
+    if (!b) return;
+    const f = new File([b], AB[n].replace(/[:\/]/g, '') + '.pdf', { type: 'application/pdf' });
+    if (navigator.canShare({ files: [f] })) { datei = f; a.style.opacity = ''; }
+  }).catch(() => {});
+  a.addEventListener('click', e => {
+    if (!datei) return;
+    e.preventDefault();
+    navigator.share({ files: [datei] }).catch(() => {});
+  });
+})();
 // Im Vollbild: ganze Seite sichtbar, Tipp aufs Blatt schaltet auf Seitenbreite zum Scrollen.
 document.getElementById('img').addEventListener('click', () => { const h = document.documentElement; if (h.classList.contains('fs')) h.classList.toggle('wide'); });
 // Vollbild: Knopf oder Taste F. Nach einem Seitenwechsel holt der erste Tipp das Vollbild zurück.
@@ -68,7 +85,7 @@ document.getElementById('img').addEventListener('click', () => { const h = docum
   d.addEventListener('webkitfullscreenchange', change);
   d.addEventListener('click', e => {
     const a = e.target.closest('a[href]');
-    if (a && !a.hasAttribute('download')) { leaving = true; return; }
+    if (a) { if (!a.hasAttribute('download')) leaving = true; return; }
     if (!b.contains(e.target) && !on() && want()) enter();
   }, true);
   d.addEventListener('keydown', e => {

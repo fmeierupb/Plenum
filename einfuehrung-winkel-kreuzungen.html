@@ -310,7 +310,7 @@ STEPS[0].enter(); render();
   d.addEventListener('webkitfullscreenchange', change);
   d.addEventListener('click', e => {
     const a = e.target.closest('a[href]');
-    if (a && !a.hasAttribute('download')) { leaving = true; return; }
+    if (a) { if (!a.hasAttribute('download')) leaving = true; return; }
     if (!b.contains(e.target) && !on() && want()) enter();
   }, true);
   d.addEventListener('keydown', e => {
