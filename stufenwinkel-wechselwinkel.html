@@ -135,18 +135,19 @@ const U = () => [0, tlt];
 // Die vier Winkel einer Kreuzung, gegen den Uhrzeigersinn ab der Parallelen nach rechts.
 const spans = u => [[u, a], [a, u + 180], [u + 180, a + 180], [a + 180, u + 360]];
 const v = (k, i) => { const d = a - U()[k]; return Math.round(i % 2 ? 180 - d : d); };
-// o.col: Farbe je Winkel, o.names / o.vals: Beschriftung, o.only: nur diese beschriften, o.hidden: Wert verdeckt
+// o.col: Farbe je Winkel, o.names / o.vals: Beschriftung, o.only: nur diese beschriften, o.hidden: Wert verdeckt, o.bare: keine grauen Winkel
 function par(o = {}) {
   const cs = C(), us = U(); let s = '';
   for (let k = 0; k < 2; k++) spans(us[k]).forEach((sp, i) => {
     const kk = key(k, i), col = o.col && o.col[kk];
     let lab = '';
     if (o.names && (!o.only || o.only.includes(kk))) lab = !o.vals ? nm(k, i) : (o.hidden && o.hidden[kk]) ? nm(k, i) + ' = ?' : `${nm(k, i)} = ${v(k, i)}°`;
-    if (o.names || col) s += wedge(cs[k], sp[0], sp[1], col ? 78 : 52, col || 'n', lab, 'tx', 150);
+    if (col || (o.names && !o.bare)) s += wedge(cs[k], sp[0], sp[1], col ? 78 : 52, col || 'n', lab, 'tx', 150);
   });
+  // f wird links beschriftet. Rechts wandert beim Verschieben die Beschriftung von α₁' vorbei.
   s += xline(cs[0], 0) + xline(cs[1], us[1]) + xline(F0, a);
   const hr = pol((770 - cs[1].x) / Math.cos(rad(us[1])), us[1], cs[1]);
-  s += text(P(770, GY - 26), 'g') + text(P(hr.x, hr.y - 26), 'h') + text(pol(34, a - 90, F0), 'f');
+  s += text(P(770, GY - 26), 'g') + text(P(hr.x, hr.y - 26), 'h') + text(pol(34, a + 90, F0), 'f');
   if (!o.noPar && tlt === 0) s += text(P(60, 30), 'g ∥ h', 'ts');
   return s;
 }
@@ -160,14 +161,16 @@ function stufFig(n) {
   const [g0, h0] = C(), Q = P(g0.x + off * (h0.x - g0.x), g0.y + off * (h0.y - g0.y)), w = v(0, 0), col = {};
   if (n !== 2) col['0,0'] = 'c1';
   if (n === 3) col['1,0'] = 'c1';
-  let s = par({ col, names: 1, vals: 1, only: Object.keys(col) });
-  if (n < 3) s += xline(Q, 0, 'gh') + wedge(Q, 0, a, 78, 'c1', n === 2 ? `α₁' = α₂` : `α₁' = ${w}°`, 'tx', 150);
+  // Nur die beteiligten Winkel, damit sich nahe h nichts überlagert. Liegt die Kopie auf h, wird keine zweite Linie über h gezeichnet.
+  let s = par({ col, names: 1, vals: 1, only: Object.keys(col), bare: 1 });
+  if (n < 3) s += (off < 1 ? xline(Q, 0, 'gh') : '') + wedge(Q, 0, a, 78, 'c1', n === 2 ? `α₁' = α₂` : `α₁' = ${w}°`, 'tx', 150);
   return s;
 }
-// Die verschobene Gerade ist waagerecht. Ihre Lage hängt nur von der Höhe des Fingers ab, sie bleibt also immer unter dem Finger.
+// Die verschobene Gerade ist waagerecht. Ihre Lage hängt nur von der Höhe des Fingers ab, sie bleibt also unter dem Finger.
+// Nahe h rastet sie ein und löst sich erst wieder, wenn der Finger deutlich höher geht. So zittert sie an der Schwelle nicht.
 function shiftDrag(w, p) {
   const t = (p.y - GY) / (HY - GY);
-  off = t > 0.94 ? 1 : clamp(t, 0.25, 1);
+  off = off === 1 ? (t < 0.85 ? clamp(t, 0.25, 1) : 1) : (t >= 0.93 ? 1 : clamp(t, 0.25, 1));
 }
 const WS = ["α₁' = α₁ &nbsp;&nbsp; verschoben", "α₁' = α₂ &nbsp;&nbsp; g ∥ h", 'Also: α₁ = α₂'];
 const whyS = n => ({
