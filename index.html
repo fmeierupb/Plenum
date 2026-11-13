@@ -23,10 +23,16 @@ h2{font-size:clamp(19px,2.4vw,26px);margin:0 0 12px}
 .row{display:flex;gap:10px}
 a{flex:1;text-align:center;border:1px solid var(--line);border-radius:12px;padding:14px 10px;color:inherit;text-decoration:none;font-size:clamp(17px,2.1vw,22px);font-weight:600}
 a.go{background:var(--c1);border-color:var(--c1);color:#fff}
+#fs svg{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em}
+#fs .fo,html.fs #fs .fi{display:none}
+html.fs #fs .fo{display:inline}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px}
+.top h1{margin:0}
+#fs{font:inherit;font-size:clamp(20px,2.4vw,26px);color:inherit;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer}
 </style>
 </head>
 <body>
-<h1>Mathe 8</h1>
+<div class="top"><h1>Mathe 8</h1><button id="fs" aria-label="Vollbild" title="Vollbild (F)"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="fi" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><path class="fo" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg></button></div>
 <section><h2>Winkel an Geradenkreuzungen</h2><div class="row"><a class="go" href="einfuehrung-winkel-kreuzungen.html">Einführung</a><a href="ab.html?n=ab-winkel-geradenkreuzungen">Arbeitsblatt</a></div></section>
 <section><h2>Stufenwinkel und Wechselwinkel</h2><div class="row"><a class="go" href="stufenwinkel-wechselwinkel.html">Einführung</a><a href="ab.html?n=ab-stufenwinkel-wechselwinkel">Arbeitsblatt</a></div></section>
 <section><h2>Winkelsumme im Dreieck und Viereck</h2><div class="row"><a class="go" href="winkelsumme.html">Einführung</a><a href="ab.html?n=ab-winkelsumme">Arbeitsblatt</a></div></section>
@@ -34,6 +40,40 @@ a.go{background:var(--c1);border-color:var(--c1);color:#fff}
 <section><h2>Umkreis und Inkreis</h2><div class="row"><a class="go" href="umkreis-inkreis.html">Einführung</a><a href="ab.html?n=ab-umkreis-inkreis">Arbeitsblatt</a></div></section>
 <section><h2>Dreiecke konstruieren: SSS, SWS, WSW</h2><div class="row"><a class="go" href="dreiecke-konstruieren.html">Einführung</a><a href="ab.html?n=ab-dreiecke-konstruieren">Arbeitsblatt</a></div></section>
 <script>
+// Vollbild: Knopf oder Taste F. Nach einem Seitenwechsel holt der erste Tipp das Vollbild zurück.
+(() => {
+  const d = document, el = d.documentElement, b = d.getElementById('fs');
+  if (!b) return;
+  if (!(d.fullscreenEnabled || d.webkitFullscreenEnabled)) { b.hidden = true; return; }
+  const on = () => !!(d.fullscreenElement || d.webkitFullscreenElement);
+  const want = v => { try { if (v === undefined) return sessionStorage.getItem('fs') === '1'; sessionStorage.setItem('fs', v ? '1' : '0'); } catch (e) { return false; } };
+  const call = (o, f) => { if (!f) return; try { const p = f.call(o); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
+  const enter = () => call(el, el.requestFullscreen || el.webkitRequestFullscreen);
+  const exit = () => call(d, d.exitFullscreen || d.webkitExitFullscreen);
+  const toggle = () => { if (on()) { want(false); exit(); } else { want(true); enter(); } };
+  let leaving = false;
+  const sync = () => {
+    const f = on(); el.classList.toggle('fs', f); if (!f) el.classList.remove('wide');
+    b.setAttribute('aria-pressed', f); b.title = f ? 'Vollbild beenden (F)' : 'Vollbild (F)';
+  };
+  const change = () => { sync(); if (!on() && !leaving) want(false); };   // mit X oder Esc beendet
+  b.addEventListener('click', toggle);
+  d.addEventListener('fullscreenchange', change);
+  d.addEventListener('webkitfullscreenchange', change);
+  d.addEventListener('click', e => {
+    const a = e.target.closest('a[href]');
+    if (a && !a.hasAttribute('download')) { leaving = true; return; }
+    if (!b.contains(e.target) && !on() && want()) enter();
+  }, true);
+  d.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggle(); }
+    else if (e.key !== 'Escape' && !on() && want()) enter();
+  });
+  addEventListener('pagehide', () => { leaving = true; });
+  addEventListener('pageshow', () => { leaving = false; sync(); });
+  sync();
+})();
 // Offline: Nach dem ersten Aufruf liegen alle Stunden und Arbeitsblätter im Speicher.
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>

@@ -20,10 +20,18 @@ header{position:sticky;top:0;display:flex;align-items:center;gap:10px;padding:ca
 header a{border:1px solid var(--line);border-radius:12px;padding:10px 16px;color:inherit;text-decoration:none;font-weight:600;font-size:18px}
 #t{flex:1;font-weight:700;font-size:clamp(17px,2.2vw,24px)}
 img{display:block;width:100%;max-width:1000px;margin:12px auto;background:#fff;border-radius:6px}
+#fs svg{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em}
+#fs .fo,html.fs #fs .fi{display:none}
+html.fs #fs .fo{display:inline}
+header button{font:inherit;font-size:18px;color:inherit;background:transparent;border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer}
+html.fs body{display:flex;flex-direction:column;height:100dvh}
+html.fs img{flex:1;min-height:0;width:100%;max-width:none;margin:0;object-fit:contain;background:transparent;border-radius:0}
+html.fs.wide body{display:block;height:auto}
+html.fs.wide img{height:auto;background:#fff}
 </style>
 </head>
 <body>
-<header><a href="./">‹ Menü</a><span id="t"></span><a id="pdf" download>PDF</a></header>
+<header><a href="./">‹ Menü</a><span id="t"></span><button id="fs" aria-label="Vollbild" title="Vollbild (F)"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="fi" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><path class="fo" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg></button><a id="pdf" download>PDF</a></header>
 <img id="img" alt="">
 <script>
 'use strict';
@@ -34,6 +42,42 @@ document.getElementById('img').alt = AB[n];
 document.getElementById('pdf').href = 'ab/' + n + '.pdf';
 document.getElementById('t').textContent = AB[n];
 document.title = AB[n];
+// Im Vollbild: ganze Seite sichtbar, Tipp aufs Blatt schaltet auf Seitenbreite zum Scrollen.
+document.getElementById('img').addEventListener('click', () => { const h = document.documentElement; if (h.classList.contains('fs')) h.classList.toggle('wide'); });
+// Vollbild: Knopf oder Taste F. Nach einem Seitenwechsel holt der erste Tipp das Vollbild zurück.
+(() => {
+  const d = document, el = d.documentElement, b = d.getElementById('fs');
+  if (!b) return;
+  if (!(d.fullscreenEnabled || d.webkitFullscreenEnabled)) { b.hidden = true; return; }
+  const on = () => !!(d.fullscreenElement || d.webkitFullscreenElement);
+  const want = v => { try { if (v === undefined) return sessionStorage.getItem('fs') === '1'; sessionStorage.setItem('fs', v ? '1' : '0'); } catch (e) { return false; } };
+  const call = (o, f) => { if (!f) return; try { const p = f.call(o); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
+  const enter = () => call(el, el.requestFullscreen || el.webkitRequestFullscreen);
+  const exit = () => call(d, d.exitFullscreen || d.webkitExitFullscreen);
+  const toggle = () => { if (on()) { want(false); exit(); } else { want(true); enter(); } };
+  let leaving = false;
+  const sync = () => {
+    const f = on(); el.classList.toggle('fs', f); if (!f) el.classList.remove('wide');
+    b.setAttribute('aria-pressed', f); b.title = f ? 'Vollbild beenden (F)' : 'Vollbild (F)';
+  };
+  const change = () => { sync(); if (!on() && !leaving) want(false); };   // mit X oder Esc beendet
+  b.addEventListener('click', toggle);
+  d.addEventListener('fullscreenchange', change);
+  d.addEventListener('webkitfullscreenchange', change);
+  d.addEventListener('click', e => {
+    const a = e.target.closest('a[href]');
+    if (a && !a.hasAttribute('download')) { leaving = true; return; }
+    if (!b.contains(e.target) && !on() && want()) enter();
+  }, true);
+  d.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggle(); }
+    else if (e.key !== 'Escape' && !on() && want()) enter();
+  });
+  addEventListener('pagehide', () => { leaving = true; });
+  addEventListener('pageshow', () => { leaving = false; sync(); });
+  sync();
+})();
 // Offline: Nach dem ersten Aufruf liegen alle Stunden und Arbeitsblätter im Speicher.
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
