@@ -1,23 +1,23 @@
 // Eigener Cache-Präfix, damit andere Werkzeuge unter derselben Adresse unberührt bleiben.
-const CACHE = 'plenum-4038500d';
+const CACHE = 'plenum-c9a30dd3';
 // Alles, was beim ersten Aufruf in den Speicher kommt.
 const FILES = [
   './',
   './ab.html',
   './ab/ab-dreiecke-konstruieren.pdf',
-  './ab/ab-dreiecke-konstruieren.png',
+  './ab/ab-dreiecke-konstruieren.svg',
   './ab/ab-mittelsenkrechte-winkelhalbierende.pdf',
-  './ab/ab-mittelsenkrechte-winkelhalbierende.png',
+  './ab/ab-mittelsenkrechte-winkelhalbierende.svg',
   './ab/ab-stufenwinkel-wechselwinkel.pdf',
-  './ab/ab-stufenwinkel-wechselwinkel.png',
+  './ab/ab-stufenwinkel-wechselwinkel.svg',
   './ab/ab-umkreis-inkreis.pdf',
-  './ab/ab-umkreis-inkreis.png',
+  './ab/ab-umkreis-inkreis.svg',
   './ab/ab-wiederholung.pdf',
-  './ab/ab-wiederholung.png',
+  './ab/ab-wiederholung.svg',
   './ab/ab-winkel-geradenkreuzungen.pdf',
-  './ab/ab-winkel-geradenkreuzungen.png',
+  './ab/ab-winkel-geradenkreuzungen.svg',
   './ab/ab-winkelsumme.pdf',
-  './ab/ab-winkelsumme.png',
+  './ab/ab-winkelsumme.svg',
   './dreiecke-konstruieren.html',
   './einfuehrung-winkel-kreuzungen.html',
   './icon-180.png',
