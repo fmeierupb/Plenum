@@ -180,21 +180,36 @@ function geo(c, base, r, o = {}) {
   }
   return s;
 }
+// Abstand von p zur Strecke a b
+function dSeg(p, a, b) {
+  const vx = b.x - a.x, vy = b.y - a.y, t = clamp(((p.x - a.x) * vx + (p.y - a.y) * vy) / (vx * vx + vy * vy), 0, 1);
+  return Math.hypot(p.x - a.x - t * vx, p.y - a.y - t * vy);
+}
+const join = arr => arr.filter(Boolean).join(' &nbsp;&nbsp; ');
 // ---------- Bahngleis: parallel und senkrecht ----------
 // Gleis von oben: Schwellen aus Holz, darauf zwei Schienen. Regelspur 1435 mm (BOA NRW § 6), Meterspur 1000 mm.
 const R1 = 190, R2 = 330;
-function trackFig(show) {
+let sx = 300;
+function trackFig() {
+  const r = vis('rails'), q = vis('sleeper');
   let s = '';
   for (let x = 60; x <= 740; x += 80) s += `<rect class="wood" x="${x - 13}" y="150" width="26" height="220" rx="3"/>`;
-  s += seg(P(30, R1), P(770, R1), show ? 'rail1' : 'rail') + seg(P(30, R2), P(770, R2), show ? 'rail1' : 'rail');
-  if (!show) return s;
-  s += seg(P(300, 150), P(300, 370), 'g2') + rmark(P(300, R1), 0, 24);
-  [[180, 'l'], [580, 'r']].forEach(([x]) => {
+  s += seg(P(30, R1), P(770, R1), r ? 'rail1' : 'rail') + seg(P(30, R2), P(770, R2), r ? 'rail1' : 'rail');
+  if (q) s += seg(P(sx, 150), P(sx, 370), 'g2') + rmark(P(sx, R1), 0, 24);
+  if (!r) return s;
+  [180, 580].forEach(x => {
     s += seg(P(x, R1 + 10), P(x, R2 - 10), 'da') + seg(P(x - 9, R1 + 10), P(x + 9, R1 + 10), 'thin') + seg(P(x - 9, R2 - 10), P(x + 9, R2 - 10), 'thin');
     s += `<rect class="lab" x="${x + 10}" y="${(R1 + R2) / 2 - 18}" width="112" height="36" rx="6"/>` + text(P(x + 66, (R1 + R2) / 2), '1435 mm', 'tn');
   });
   s += text(P(400, 425), 'Regelspur (Normalspur): 1435 mm, z. B. Deutsche Bahn', 'tn') + text(P(400, 468), 'Meterspur: 1000 mm, z. B. Stadtbahn Bielefeld', 'tn');
   return s;
+}
+// Schiene antippen: parallel. Schwelle antippen: diese Schwelle wird markiert, senkrecht.
+function trackHit(p) {
+  if (Math.abs(p.y - R1) < 26 || Math.abs(p.y - R2) < 26) return 'rails';
+  const x = 60 + 80 * Math.round((p.x - 60) / 80);
+  if (p.y > 140 && p.y < 380 && x >= 60 && x <= 740 && Math.abs(p.x - x) < 28) { if (!vis('sleeper')) sx = x; return 'sleeper'; }
+  return null;
 }
 
 // ---------- Geraden erkennen ----------
@@ -203,47 +218,62 @@ const yd = x => 320 + 0.1 * (x - 150), ye = x => 440 - 0.1 * (x - 150), S2 = P(7
 // Abstand zwischen zwei Punkten übereinander, mit Endstrichen und Länge in cm (50 Bildpunkte = 1 cm). Beschriftung rechts oder unten.
 const gap = (x, y1, y2, below) => seg(P(x, y1 + 6), P(x, y2 - 6), 'da') + seg(P(x - 9, y1 + 6), P(x + 9, y1 + 6), 'thin') + seg(P(x - 9, y2 - 6), P(x + 9, y2 - 6), 'thin')
   + text(below ? P(x, y2 + 30) : P(x + 44, (y1 + y2) / 2), cm(y2 - y1) + ' cm', 'tn');
-function linesFig(show) {
-  const k = c => show ? c : 'ln';
-  let s = seg(P(60, 120), P(740, 120), k('g1')) + seg(P(60, 220), P(740, 220), k('g1')) + seg(P(110, 50), P(110, 490), k('g2'))
-    + seg(P(150, yd(150)), P(785, yd(785)), k('gr')) + seg(P(150, ye(150)), P(785, ye(785)), k('gr'));
+const LN = [[P(60, 120), P(740, 120), 'par'], [P(60, 220), P(740, 220), 'par'], [P(110, 50), P(110, 490), 'perp'],
+  [P(150, yd(150)), P(785, yd(785)), 'cut'], [P(150, ye(150)), P(785, ye(785)), 'cut']];
+function linesFig() {
+  const on = { par: vis('par'), perp: vis('perp'), cut: vis('cut') }, col = { par: 'g1', perp: 'g2', cut: 'gr' };
+  let s = LN.map(([a, b, k]) => seg(a, b, on[k] ? col[k] : 'ln')).join('');
   s += text(P(770, 120), 'f') + text(P(770, 220), 'g') + text(P(138, 62), 'h') + text(P(150, 294), 'j') + text(P(150, 468), 'k');
-  if (show) {
-    s += rmark(P(110, 120), 0, 22) + rmark(P(110, 220), 0, 22) + gap(400, 120, 220) + gap(680, 120, 220);
+  if (on.perp) s += rmark(P(110, 120), 0, 22) + rmark(P(110, 220), 0, 22);
+  if (on.par) s += gap(400, 120, 220) + gap(680, 120, 220);
+  if (on.cut) {
     [250, 375, 500, 625].forEach(x => { s += gap(x, yd(x), ye(x), 1); });
     s += dot(S2, 8) + text(P(705, 342), 'Schnittpunkt', 'tm');
   }
   return s;
 }
+// f oder g antippen: parallel. h antippen: senkrecht. j oder k antippen: Schnittpunkt.
+function linesHit(p) {
+  let best = null, bd = 32;
+  LN.forEach(([a, b, k]) => { const d = dSeg(p, a, b); if (d < bd) { bd = d; best = k; } });
+  return best;
+}
 
 // ---------- Laptop: Fachbegriffe ----------
 let lw = 110;
 const LS = P(300, 390);
-function laptopFig(show) {
+function laptopFig() {
   const K = pol(340, 0, LS), T = pol(280, lw, LS);
   let s = bar(LS, K, 22, 'lap', -1) + bar(LS, T, 18, 'lap', 1) + bar(pol(14, lw, LS), pol(266, lw, LS), 12, 'scr', -1);
   s += wedge(LS, 0, lw, 70, 'c1') + seg(LS, K) + seg(LS, T);
-  if (!show) return s + text(pol(42, lw / 2, LS), 'α', 'tx');
-  s += arc(LS, 0, lw, 70) + dot(LS, 9) + text(pol(42, lw / 2, LS), 'α', 'tx');
-  s += text(P(LS.x - 10, LS.y + 52), 'Scheitelpunkt S', 'tm');
-  s += text(P(LS.x + 250, LS.y + 52), 'Schenkel', 'tm') + text(pol(80, lw + 90, pol(190, lw, LS)), 'Schenkel', 'tm');
-  s += text(pol(118, lw / 2, LS), 'Winkelbogen', 'tm');
-  return s;
+  if (vis('bogen')) s += arc(LS, 0, lw, 70) + text(pol(118, lw / 2, LS), 'Winkelbogen', 'tm');
+  if (vis('scheitel')) s += dot(LS, 9) + text(P(LS.x - 10, LS.y + 52), 'Scheitelpunkt S', 'tm');
+  if (vis('schenkel')) s += text(P(LS.x + 250, LS.y + 52), 'Schenkel', 'tm') + text(pol(80, lw + 90, pol(190, lw, LS)), 'Schenkel', 'tm');
+  return s + text(pol(42, lw / 2, LS), 'α', 'tx');
+}
+// Scheitelpunkt, Winkelbogen oder ein Schenkel antippen. Ziehen am Bildschirm klappt den Laptop weiter auf.
+function laptopHit(p) {
+  const r = dist(p, LS), w = dirOf(LS, p);
+  if (r < 40) return 'scheitel';
+  if (r < 150 && w > 8 && w < lw - 8) return 'bogen';
+  if (dSeg(p, LS, pol(340, 0, LS)) < 35 || dSeg(p, LS, pol(280, lw, LS)) < 35) return 'schenkel';
+  return null;
 }
 const laptopDrag = w => { lw = clamp(Math.round(w), 40, 170); };
 
 // ---------- Winkelarten ----------
 const KINDS = [[50, '0° < α < 90°', 'spitz'], [90, 'α = 90°', 'rechter Winkel'], [130, '90° < α < 180°', 'stumpf'], [250, '180° < α < 360°', 'überstumpf']];
-function kindsFig(show) {
+function kindsFig() {
   let s = '';
   KINDS.forEach(([a, r, n], i) => {
     const cx = 100 + i * 200, V = P(cx - (a > 180 ? 30 : a > 90 ? 20 : 50), 260);
     s += (a === 90 ? rmark(V, 0, 34) : wedge(V, 0, a, 52, 'c1')) + ray(V, 0, 110) + ray(V, a, a > 180 ? 100 : 110) + dot(V, 7);
-    s += text(P(cx, 430), r, 'tn');
-    if (show) s += text(P(cx, 100), n, 'tm');
+    if (vis('k' + i)) s += text(P(cx, 100), n, 'tm') + text(P(cx, 430), r, 'tn');
   });
   return s;
 }
+
+const kindsHit = p => p.y > 50 && p.y < 470 ? 'k' + clamp(Math.floor(p.x / 200), 0, 3) : null;
 
 // ---------- Winkel messen ----------
 // Erster Schenkel zeigt nach links, damit man die innere Skala braucht. Der zweite Schenkel ist zu kurz und wird verlängert.
@@ -273,16 +303,17 @@ const ZT = ['', 'Zeichne einen Schenkel und markiere den Scheitelpunkt S.',
 
 // ---------- Folien ----------
 const STEPS = [
-  { t: 'Ein Bahngleis', rv: 1, fig: () => trackFig(shown),
-    txt: () => shown ? 'Die Schienen haben überall 1435 mm Abstand, sie sind parallel. Die Schwellen liegen senkrecht zu den Schienen.' : 'Ein Bahngleis von oben. Was fällt an den Schienen und Schwellen auf?',
-    eq: () => shown ? 'Schiene 1 ∥ Schiene 2 &nbsp;&nbsp; Schwelle ⊥ Schiene' : '' },
-  { t: 'Parallel oder senkrecht?', rv: 1, fig: () => linesFig(shown),
-    txt: () => shown ? 'Parallel heißt: überall gleicher Abstand. j und k kommen sich immer näher und schneiden sich. Sie sind nicht parallel.' : 'Welche Geraden sind zueinander parallel, welche senkrecht?',
-    eq: () => shown ? 'f ∥ g &nbsp;&nbsp; h ⊥ f &nbsp;&nbsp; h ⊥ g &nbsp;&nbsp; j, k: nicht parallel' : '' },
-  { t: 'Teile eines Winkels', rv: 1, c: LS, enter: () => { lw = 110; }, drag: laptopDrag, fig: () => laptopFig(shown),
-    txt: () => shown ? 'Jeder Winkel hat einen Scheitelpunkt, zwei Schenkel und einen Winkelbogen.' : 'Klappst du einen Laptop auf, entsteht ein Winkel α. Wie heißen seine Teile?',
-    eq: () => shown ? `α = ${lw}°` : '' },
-  { t: 'Winkelarten', rv: 1, fig: () => kindsFig(shown), txt: () => shown ? 'Genau 90° ist ein rechter Winkel. Die Grenzen sind 90° und 180°.' : 'Wie heißen diese Winkelarten?' },
+  { t: 'Ein Bahngleis', rv: 1, parts: ['rails', 'sleeper'], enter: () => { sx = 300; }, hit: trackHit, fig: trackFig,
+    txt: () => done() ? 'Die Schienen haben überall 1435 mm Abstand, sie sind parallel. Die Schwellen liegen senkrecht zu den Schienen.' : 'Ein Bahngleis von oben. Was fällt an den Schienen und Schwellen auf?',
+    eq: () => join([vis('rails') && 'Schiene 1 ∥ Schiene 2', vis('sleeper') && 'Schwelle ⊥ Schiene']) },
+  { t: 'Parallel oder senkrecht?', rv: 1, parts: ['par', 'perp', 'cut'], hit: linesHit, fig: linesFig,
+    txt: () => done() ? 'Parallel heißt: überall gleicher Abstand. j und k kommen sich immer näher und schneiden sich. Sie sind nicht parallel.' : 'Welche Geraden sind zueinander parallel, welche senkrecht?',
+    eq: () => join([vis('par') && 'f ∥ g', vis('perp') && 'h ⊥ f &nbsp;&nbsp; h ⊥ g', vis('cut') && 'j, k: nicht parallel']) },
+  { t: 'Teile eines Winkels', rv: 1, parts: ['scheitel', 'schenkel', 'bogen'], c: LS, enter: () => { lw = 110; }, hit: laptopHit, drag: laptopDrag, fig: laptopFig,
+    txt: () => done() ? 'Jeder Winkel hat einen Scheitelpunkt, zwei Schenkel und einen Winkelbogen.' : 'Klappst du einen Laptop auf, entsteht ein Winkel α. Wie heißen seine Teile?',
+    eq: () => done() ? `α = ${lw}°` : '' },
+  { t: 'Winkelarten', rv: 1, parts: ['k0', 'k1', 'k2', 'k3'], hit: kindsHit, fig: kindsFig,
+    txt: () => done() ? 'Genau 90° ist ein rechter Winkel. Die Grenzen sind 90° und 180°.' : 'Wie heißen diese Winkelarten?' },
   { t: 'Winkel messen', rv: 1, fig: () => measureFig(shown),
     txt: () => shown ? 'Lies auf der Skala ab, die an deinem ersten Schenkel bei 0° beginnt.' : 'Nullpunkt auf den Scheitelpunkt, 0-Linie auf einen Schenkel, kurzen Schenkel verlängern. Welche Zahl stimmt?',
     eq: () => shown ? `α = ${MA}°, denn der Winkel ist spitz.` : '' },
@@ -292,6 +323,14 @@ const STEPS = [
 
 // ---------- Ablauf ----------
 let step = 0, pair = 0, shown = false, shownStep = -1;
+// Einzeln antippbare Lösungen: st.parts nennt die Teile, st.hit(p) liefert den getroffenen Teil.
+let opened = new Set();
+const vis = k => shown || opened.has(k);
+const done = (st = STEPS[step]) => shown || !!(st.parts && st.parts.every(k => opened.has(k)));
+function flip(k) {
+  if (shown) { shown = false; opened = new Set(STEPS[step].parts); }
+  if (opened.has(k)) opened.delete(k); else opened.add(k);
+}
 function render() {
   const st = STEPS[step];
   $('title').textContent = typeof st.t === 'function' ? st.t() : st.t;
@@ -304,20 +343,20 @@ function render() {
     $('cnt').textContent = `${step + 1} / ${STEPS.length}`;
     $('prev').disabled = step === 0;
   }
-  $('next').disabled = step === STEPS.length - 1 && !(st.rv && !shown);
+  $('next').disabled = step === STEPS.length - 1 && !(st.rv && !done(st));
   const bs = $('extras').children || [];
   for (let i = 0; i < bs.length; i++) bs[i].disabled = !!(st.btns[i].dis && st.btns[i].dis());
 }
 function go(d) {
   const n = step + d; if (n < 0 || n >= STEPS.length) return;
-  step = n; pair = 0; shown = false;
+  step = n; pair = 0; shown = false; opened = new Set();
   if (typeof onGo === 'function') onGo();
   if (STEPS[step].enter) STEPS[step].enter();
   render();
 }
 $('prev').addEventListener('click', () => go(-1));
 // Bei Folien mit verdecktem Ergebnis deckt der erste Druck auf, der zweite geht weiter.
-const fwd = () => { const st = STEPS[step]; if (st.rv && !shown) { shown = true; render(); } else go(1); };
+const fwd = () => { const st = STEPS[step]; if (st.rv && !done(st)) { shown = true; render(); } else go(1); };
 $('next').addEventListener('click', fwd);
 $('extras').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -328,7 +367,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
 });
 
-const fig = $('fig'); let down = false;
+const fig = $('fig'); let down = false, pend = null;
 // Zeigerposition in Bildkoordinaten, auch wenn das Bild mit Rand eingepasst ist.
 function svgPt(e) {
   const r = fig.getBoundingClientRect(), sc = Math.min(r.width / 800, r.height / 520);
@@ -337,15 +376,28 @@ function svgPt(e) {
 const ctr = st => typeof st.c === 'function' ? st.c() : st.c || M;
 fig.addEventListener('pointerdown', e => {
   const st = STEPS[step], p = svgPt(e), w = dirOf(ctr(st), p);
+  const k = st.hit && st.hit(p);
+  if (k) {
+    if (!st.drag) { flip(k); return render(); }
+    // Auf ziehbaren Folien entscheidet erst die Bewegung: Tippen deckt auf, Ziehen zieht.
+    pend = { k, p }; try { fig.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); return;
+  }
   if (st.tap) { st.tap(w, p); return render(); }
   if (!st.drag) return;
   if (st.down && st.down(p) === false) return;
   down = true; try { fig.setPointerCapture(e.pointerId); } catch (x) {}
   st.drag(w, p); render(); e.preventDefault();
 });
-fig.addEventListener('pointermove', e => { const st = STEPS[step]; if (down && st.drag) { const p = svgPt(e); st.drag(dirOf(ctr(st), p), p); render(); } });
-const up = () => { if (down) { down = false; const st = STEPS[step]; if (st.up) { st.up(); render(); } } };
-fig.addEventListener('pointerup', up); fig.addEventListener('pointercancel', up);
+fig.addEventListener('pointermove', e => {
+  const st = STEPS[step];
+  if (pend) {
+    const p = svgPt(e); if (dist(p, pend.p) < 10) return;
+    pend = null; if (st.down && st.down(p) === false) return;
+    down = true; st.drag(dirOf(ctr(st), p), p); return render();
+  }
+  if (down && st.drag) { const p = svgPt(e); st.drag(dirOf(ctr(st), p), p); render(); } });
+const up = () => { if (pend) { flip(pend.k); pend = null; return render(); } if (down) { down = false; const st = STEPS[step]; if (st.up) { st.up(); render(); } } };
+fig.addEventListener('pointerup', up); fig.addEventListener('pointercancel', () => { pend = null; up(); });
 if (typeof onGo === 'function') onGo();
 if (STEPS[0].enter) STEPS[0].enter();
 render();

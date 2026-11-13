@@ -267,6 +267,14 @@ const STEPS = [
 
 // ---------- Ablauf ----------
 let step = 0, pair = 0, shown = false, shownStep = -1;
+// Einzeln antippbare Lösungen: st.parts nennt die Teile, st.hit(p) liefert den getroffenen Teil.
+let opened = new Set();
+const vis = k => shown || opened.has(k);
+const done = (st = STEPS[step]) => shown || !!(st.parts && st.parts.every(k => opened.has(k)));
+function flip(k) {
+  if (shown) { shown = false; opened = new Set(STEPS[step].parts); }
+  if (opened.has(k)) opened.delete(k); else opened.add(k);
+}
 function render() {
   const st = STEPS[step];
   $('title').textContent = typeof st.t === 'function' ? st.t() : st.t;
@@ -279,20 +287,20 @@ function render() {
     $('cnt').textContent = `${step + 1} / ${STEPS.length}`;
     $('prev').disabled = step === 0;
   }
-  $('next').disabled = step === STEPS.length - 1 && !(st.rv && !shown);
+  $('next').disabled = step === STEPS.length - 1 && !(st.rv && !done(st));
   const bs = $('extras').children || [];
   for (let i = 0; i < bs.length; i++) bs[i].disabled = !!(st.btns[i].dis && st.btns[i].dis());
 }
 function go(d) {
   const n = step + d; if (n < 0 || n >= STEPS.length) return;
-  step = n; pair = 0; shown = false;
+  step = n; pair = 0; shown = false; opened = new Set();
   if (typeof onGo === 'function') onGo();
   if (STEPS[step].enter) STEPS[step].enter();
   render();
 }
 $('prev').addEventListener('click', () => go(-1));
 // Bei Folien mit verdecktem Ergebnis deckt der erste Druck auf, der zweite geht weiter.
-const fwd = () => { const st = STEPS[step]; if (st.rv && !shown) { shown = true; render(); } else go(1); };
+const fwd = () => { const st = STEPS[step]; if (st.rv && !done(st)) { shown = true; render(); } else go(1); };
 $('next').addEventListener('click', fwd);
 $('extras').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -303,7 +311,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
 });
 
-const fig = $('fig'); let down = false;
+const fig = $('fig'); let down = false, pend = null;
 // Zeigerposition in Bildkoordinaten, auch wenn das Bild mit Rand eingepasst ist.
 function svgPt(e) {
   const r = fig.getBoundingClientRect(), sc = Math.min(r.width / 800, r.height / 520);
@@ -312,15 +320,28 @@ function svgPt(e) {
 const ctr = st => typeof st.c === 'function' ? st.c() : st.c || M;
 fig.addEventListener('pointerdown', e => {
   const st = STEPS[step], p = svgPt(e), w = dirOf(ctr(st), p);
+  const k = st.hit && st.hit(p);
+  if (k) {
+    if (!st.drag) { flip(k); return render(); }
+    // Auf ziehbaren Folien entscheidet erst die Bewegung: Tippen deckt auf, Ziehen zieht.
+    pend = { k, p }; try { fig.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); return;
+  }
   if (st.tap) { st.tap(w, p); return render(); }
   if (!st.drag) return;
   if (st.down && st.down(p) === false) return;
   down = true; try { fig.setPointerCapture(e.pointerId); } catch (x) {}
   st.drag(w, p); render(); e.preventDefault();
 });
-fig.addEventListener('pointermove', e => { const st = STEPS[step]; if (down && st.drag) { const p = svgPt(e); st.drag(dirOf(ctr(st), p), p); render(); } });
-const up = () => { if (down) { down = false; const st = STEPS[step]; if (st.up) { st.up(); render(); } } };
-fig.addEventListener('pointerup', up); fig.addEventListener('pointercancel', up);
+fig.addEventListener('pointermove', e => {
+  const st = STEPS[step];
+  if (pend) {
+    const p = svgPt(e); if (dist(p, pend.p) < 10) return;
+    pend = null; if (st.down && st.down(p) === false) return;
+    down = true; st.drag(dirOf(ctr(st), p), p); return render();
+  }
+  if (down && st.drag) { const p = svgPt(e); st.drag(dirOf(ctr(st), p), p); render(); } });
+const up = () => { if (pend) { flip(pend.k); pend = null; return render(); } if (down) { down = false; const st = STEPS[step]; if (st.up) { st.up(); render(); } } };
+fig.addEventListener('pointerup', up); fig.addEventListener('pointercancel', () => { pend = null; up(); });
 if (typeof onGo === 'function') onGo();
 if (STEPS[0].enter) STEPS[0].enter();
 render();
